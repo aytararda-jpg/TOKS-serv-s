@@ -6,62 +6,85 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TOKS SERVİS">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%230B1D3A'/%3E%3Ctext x='50%25' y='53%25' dominant-baseline='middle' text-anchor='middle' font-family='-apple-system, sans-serif' font-weight='bold' font-size='380' fill='%23FFFFFF'%3ET%3C/text%3E%3C/svg%3E">
-  <title>TRON // TOKS SERVİS</title>
+  <title>TOKS // SERVİS SİSTEMİ</title>
   <style>
-    :root { --neon: #00e5ff; --neon-glow: rgba(0, 229, 255, 0.4); --bg: #06090e; --card-bg: rgba(10, 20, 30, 0.85); --border: #00e5ff55; --red: #ff0055; --yellow: #ffcc00; --green: #00ff66; }
+    :root { 
+      --bg: #06090e; --card-bg: rgba(10, 20, 30, 0.85); --border: #334155; 
+      --toks-navy: #0A1D3A; --toks-yellow: #FFCC00; 
+      --red: #ff0055; --blue: #00e5ff; --green: #00ff66;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, "SF Mono", monospace; }
-    body { background-color: var(--bg); color: var(--neon); padding: 15px; min-height: 100vh; }
-    header { border-bottom: 2px solid var(--neon); padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; text-shadow: 0 0 10px var(--neon-glow); }
-    h1 { font-size: 1.2rem; letter-spacing: 2px; }
+    body { background-color: var(--bg); color: #fff; padding: 15px; min-height: 100vh; padding-top: 70px; }
     
-    /* Sekme (Tab) Tasarımı */
+    /* Üst Sabit Bar ve Logo */
+    header { position: fixed; top: 0; left: 0; width: 100%; background: var(--toks-navy); padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; z-index: 100; border-bottom: 2px solid var(--toks-yellow); box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    .logo { display: flex; align-items: center; font-size: 1.5rem; font-weight: 900; letter-spacing: -1px; background: #fff; color: var(--toks-navy); padding: 2px 8px; border-radius: 4px; }
+    .logo-arrow { color: var(--toks-yellow); font-size: 1.8rem; line-height: 1; margin-left: 2px; }
+    
+    .info-widget { text-align: right; font-size: 0.7rem; color: #cbd5e1; }
+    .info-widget strong { color: var(--toks-yellow); font-size: 0.8rem; display: block; margin-top: 2px; }
+
     .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-    .tab { flex: 1; padding: 10px; text-align: center; border: 1px solid var(--neon); color: var(--neon); cursor: pointer; font-weight: bold; background: transparent; transition: 0.3s; }
-    .tab.active { background: var(--neon); color: #000; box-shadow: 0 0 10px var(--neon-glow); }
+    .tab { flex: 1; padding: 10px; text-align: center; border: 1px solid var(--border); color: #fff; cursor: pointer; font-weight: bold; background: var(--card-bg); border-radius: 4px; }
+    .tab.active { background: var(--toks-yellow); color: var(--toks-navy); border-color: var(--toks-yellow); }
 
-    .input-panel { background: var(--card-bg); border: 1px solid var(--border); padding: 15px; margin-bottom: 15px; clip-path: polygon(0 0, 95% 0, 100% 15px, 100% 100%, 0 100%); }
-    input, select { width: 100%; background: #02070d; border: 1px solid var(--border); color: var(--neon); padding: 10px; margin-bottom: 10px; font-size: 1rem; outline: none; text-transform: uppercase; appearance: none; }
-    input:focus, select:focus { border-color: var(--neon); box-shadow: 0 0 8px var(--neon-glow); }
-    select option { background: var(--bg); color: var(--neon); }
+    .input-panel { background: var(--card-bg); border: 1px solid var(--border); padding: 15px; margin-bottom: 15px; border-radius: 8px; border-top: 3px solid var(--toks-yellow); }
+    .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    input, select { width: 100%; background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 10px; font-size: 0.9rem; outline: none; border-radius: 4px; }
+    input:focus, select:focus { border-color: var(--toks-yellow); }
     
-    .btn { width: 100%; background: transparent; border: 1px solid var(--neon); color: var(--neon); padding: 12px; font-weight: bold; letter-spacing: 1px; cursor: pointer; box-shadow: 0 0 10px var(--neon-glow); margin-top: 5px; }
-    .btn:active { background: var(--neon); color: #000; }
-
-    .job-card { background: var(--card-bg); border: 1px solid var(--border); padding: 12px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; border-left: 4px solid var(--neon); }
-    .job-header { display: flex; justify-content: space-between; align-items: center; }
-    .plate { font-size: 1.2rem; font-weight: bold; color: #fff; letter-spacing: 2px; }
-    .firm { font-size: 0.8rem; color: #78a6c8; }
-    .task { font-size: 0.95rem; color: var(--neon); padding-top: 5px; border-top: 1px dashed var(--border); }
+    .btn { width: 100%; background: var(--toks-yellow); color: var(--toks-navy); padding: 12px; font-weight: 900; cursor: pointer; border: none; border-radius: 4px; margin-top: 5px; }
     
-    .status-bar { display: flex; gap: 5px; margin-top: 5px; }
-    .s-btn { flex: 1; padding: 6px; font-size: 0.75rem; font-weight: bold; background: transparent; border: 1px solid #333; color: #666; cursor: pointer; }
-    .s-btn.active-0 { border-color: var(--red); color: var(--red); box-shadow: 0 0 8px rgba(255,0,85,0.4); }
-    .s-btn.active-1 { border-color: var(--yellow); color: var(--yellow); box-shadow: 0 0 8px rgba(255,204,0,0.4); }
-    .s-btn.active-2 { border-color: var(--green); color: var(--green); box-shadow: 0 0 8px rgba(0,255,102,0.4); }
-    .delete-btn { background: transparent; border: 1px solid var(--red); color: var(--red); padding: 6px; font-size: 0.75rem; width: 100%; margin-top: 5px; }
-
-    /* Klasörleme Tasarımı */
-    .firm-folder { background: #02070d; border: 1px solid var(--border); margin-bottom: 10px; }
-    .firm-title { padding: 12px; font-weight: bold; color: var(--green); cursor: pointer; display: flex; justify-content: space-between; border-left: 4px solid var(--green); }
-    .firm-content { padding: 10px; display: none; background: rgba(10, 20, 30, 0.5); border-top: 1px solid var(--border); }
+    /* Izgara (Kutu) Tasarımı */
+    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+    
+    .job-card { background: var(--card-bg); border: 1px solid var(--border); padding: 10px; display: flex; flex-direction: column; justify-content: space-between; border-radius: 6px; font-size: 0.85rem; }
+    .card-top { margin-bottom: 10px; }
+    .plate { font-size: 1.1rem; font-weight: bold; color: var(--toks-yellow); margin-bottom: 2px; }
+    .firm { color: #94a3b8; font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .task { color: #fff; line-height: 1.3; margin-bottom: 5px; }
+    .price-tag { display: inline-block; background: #064e3b; color: #34d399; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+    .time-tag { display: block; color: #64748b; font-size: 0.65rem; margin-top: 4px; }
+    
+    .action-btn { width: 100%; padding: 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; margin-top: auto; }
+    .btn-0 { background: var(--red); color: #fff; }
+    .btn-1 { background: var(--toks-yellow); color: var(--toks-navy); }
+    .btn-2 { background: var(--blue); color: #000; }
+    .btn-3 { background: var(--green); color: #000; }
+    
+    /* Arşiv Klasörleri */
+    .folder { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 15px 10px; text-align: center; cursor: pointer; border-bottom: 3px solid var(--toks-navy); }
+    .folder-icon { font-size: 2rem; margin-bottom: 5px; }
+    .folder-name { font-weight: bold; color: #fff; font-size: 0.85rem; word-break: break-word; }
+    .folder-count { font-size: 0.7rem; color: var(--toks-yellow); margin-top: 5px; }
+    
+    #archiveModal { display: none; margin-top: 15px; padding: 15px; background: #0f172a; border-radius: 8px; border: 1px solid var(--border); }
+    .modal-title { font-size: 1.2rem; color: var(--toks-yellow); margin-bottom: 15px; font-weight: bold; }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>TOKS // SİSTEM</h1>
-    <div id="connectionStatus" style="font-size: 0.75rem; color: var(--yellow);">BAĞLANTI ARANIYOR...</div>
+    <div style="display:flex; align-items:center;">
+      <div class="logo">TOKS</div><div class="logo-arrow">〉</div>
+    </div>
+    <div class="info-widget">
+      <div id="clock">Yükleniyor...</div>
+      <strong id="euro-rate">€1 = Bekleniyor...</strong>
+    </div>
   </header>
 
   <div class="tabs">
     <div class="tab active" onclick="switchTab('active')" id="tab-active">AKTİF İŞLER</div>
-    <div class="tab" onclick="switchTab('archive')" id="tab-archive">BİTENLER (ARŞİV)</div>
+    <div class="tab" onclick="switchTab('archive')" id="tab-archive">ARŞİV</div>
   </div>
 
   <div id="view-active">
     <div class="input-panel">
-      <input type="text" id="plate" placeholder="PLAKA (Örn: 35 TOKS 01)">
+      <div class="input-row">
+        <input type="text" id="plate" placeholder="PLAKA (Örn: 35 TOKS 01)">
+        <input type="text" id="price" placeholder="FİYAT (₺)" style="width: 40%;">
+      </div>
       <input type="text" id="firm" placeholder="MÜŞTERİ / FİRMA">
       <select id="task">
         <option value="" disabled selected>-- YAPILACAK İŞLEMİ SEÇ --</option>
@@ -73,20 +96,37 @@
         <option value="DİĞER (ÖZEL İŞLEM)">Diğer (Özel İşlem)</option>
       </select>
       <input type="text" id="customTask" placeholder="ÖZEL İŞLEMİ YAZIN" style="display:none; margin-top:10px;">
-      <button class="btn" onclick="addJob()">[+] SERVİSE AL</button>
+      <button class="btn" onclick="addJob()">SİSTEME KAYDET</button>
     </div>
-    <div id="jobList"></div>
+    
+    <div class="grid-container" id="jobList"></div>
   </div>
 
   <div id="view-archive" style="display:none;">
-    <div id="archiveList"></div>
+    <div class="grid-container" id="folderList"></div>
+    <div id="archiveModal">
+      <div class="modal-title" id="modalTitle"></div>
+      <button class="btn" onclick="closeModal()" style="margin-bottom: 15px; background:var(--border); color:#fff;">Geri Dön</button>
+      <div class="grid-container" id="modalJobs"></div>
+    </div>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
-    // FİREBASE ŞİFRELERİN
+    // Canlı Saat
+    setInterval(() => {
+      document.getElementById('clock').innerText = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }, 1000);
+
+    // Canlı Kur Çekimi
+    fetch('https://open.er-api.com/v6/latest/EUR')
+      .then(res => res.json())
+      .then(data => { document.getElementById('euro-rate').innerText = "€1 = " + data.rates.TRY.toFixed(2) + " ₺"; })
+      .catch(() => { document.getElementById('euro-rate').innerText = "Kur Alınamadı"; });
+
+    // Firebase Bağlantısı
     const firebaseConfig = {
       apiKey: "AIzaSyBdJ2_Vs53h9dJq_KJciNPWix6OFvOZR5Y",
       authDomain: "toks-servis.firebaseapp.com",
@@ -96,29 +136,14 @@
       messagingSenderId: "686093119969",
       appId: "1:686093119969:web:9c48f375479f65822062a0"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database().ref('toks_jobs');
-
-    // Bağlantı Radar Sensörü
-    firebase.database().ref('.info/connected').on('value', function(snap) {
-      const statusDiv = document.getElementById('connectionStatus');
-      if (snap.val() === true) {
-        statusDiv.innerText = "ONLINE";
-        statusDiv.style.color = "var(--green)";
-      } else {
-        statusDiv.innerText = "BAĞLANIYOR...";
-        statusDiv.style.color = "var(--yellow)";
-      }
-    });
 
     let jobs = [];
     let currentTab = 'active';
 
-    // "Diğer" seçilirse metin kutusunu aç
     document.getElementById('task').addEventListener('change', function() {
-      const customInput = document.getElementById('customTask');
-      customInput.style.display = this.value === "DİĞER (ÖZEL İŞLEM)" ? "block" : "none";
+      document.getElementById('customTask').style.display = this.value === "DİĞER (ÖZEL İŞLEM)" ? "block" : "none";
     });
 
     db.on('value', (snapshot) => {
@@ -132,114 +157,130 @@
       document.getElementById('tab-archive').classList.toggle('active', tab === 'archive');
       document.getElementById('view-active').style.display = tab === 'active' ? 'block' : 'none';
       document.getElementById('view-archive').style.display = tab === 'archive' ? 'block' : 'none';
+      closeModal();
       renderAll();
     }
 
     function renderAll() {
       if(currentTab === 'active') renderActive();
-      else renderArchive();
+      else renderFolders();
     }
 
+    // Aktif Kartların Çizimi (Sıralı Butonlar)
     function renderActive() {
       const list = document.getElementById('jobList');
       list.innerHTML = '';
       
       jobs.forEach((job, index) => {
-        if(job.status === 2) return; // Bitenleri aktifte gösterme
+        if(job.status === 4) return; // 4: Arşivde
         
-        let bClass = job.status === 0 ? 'active-0' : '';
-        let iClass = job.status === 1 ? 'active-1' : '';
-        let borderColor = job.status === 0 ? 'var(--red)' : 'var(--yellow)';
+        let actionBtnHTML = '';
+        let borderColor = 'var(--red)';
+        
+        if(job.status === 0) {
+          actionBtnHTML = `<button class="action-btn btn-0" onclick="updateStatus(${index}, 1)">İŞLEMDE'YE AL</button>`;
+        } else if(job.status === 1) {
+          borderColor = 'var(--toks-yellow)';
+          actionBtnHTML = `<button class="action-btn btn-1" onclick="updateStatus(${index}, 2)">BİTTİ OLARAK İŞARETLE</button>`;
+        } else if(job.status === 2) {
+          borderColor = 'var(--blue)';
+          actionBtnHTML = `<button class="action-btn btn-2" onclick="updateStatus(${index}, 3)">TESLİM EDİLDİ YAP</button>`;
+        } else if(job.status === 3) {
+          borderColor = 'var(--green)';
+          actionBtnHTML = `<button class="action-btn btn-3" onclick="updateStatus(${index}, 4)">📁 ARŞİVE KALDIR</button>`;
+        }
+
+        const priceHTML = job.price ? `<div class="price-tag">${job.price} ₺</div>` : '';
 
         list.innerHTML += `
-          <div class="job-card" style="border-left-color: ${borderColor};">
-            <div class="job-header">
+          <div class="job-card" style="border-top: 3px solid ${borderColor};">
+            <div class="card-top">
               <div class="plate">${job.plate}</div>
               <div class="firm">${job.firm}</div>
+              <div class="task">${job.task}</div>
+              ${priceHTML}
+              <div class="time-tag">Giriş: ${job.time || 'Bilinmiyor'}</div>
             </div>
-            <div class="task">> ${job.task}</div>
-            
-            <div class="status-bar">
-              <button class="s-btn ${bClass}" onclick="updateStatus(${index}, 0)">BEKLİYOR</button>
-              <button class="s-btn ${iClass}" onclick="updateStatus(${index}, 1)">İŞLEMDE</button>
-              <button class="s-btn" onclick="updateStatus(${index}, 2)">BİTTİ (ARŞİVE AT)</button>
-            </div>
-            <button class="delete-btn" onclick="deleteJob(${index})">KAYDI SİL</button>
+            ${actionBtnHTML}
           </div>
         `;
       });
     }
 
-    function renderArchive() {
-      const list = document.getElementById('archiveList');
+    // Arşiv Klasörlerinin Çizimi
+    let archiveFirms = {};
+    function renderFolders() {
+      const list = document.getElementById('folderList');
       list.innerHTML = '';
+      archiveFirms = {};
       
-      let firms = {};
-      
-      // Biten işleri firmalara göre grupla
       jobs.forEach((job, index) => {
-        if(job.status === 2) {
-          if(!firms[job.firm]) firms[job.firm] = [];
-          firms[job.firm].push({ ...job, originalIndex: index });
+        if(job.status === 4) {
+          if(!archiveFirms[job.firm]) archiveFirms[job.firm] = [];
+          archiveFirms[job.firm].push({ ...job, originalIndex: index });
         }
       });
 
-      // Gruplanan klasörleri ekrana bas
-      for (const [firmName, firmJobs] of Object.entries(firms)) {
-        let folderHTML = `<div class="firm-folder">
-            <div class="firm-title" onclick="toggleFolder('${firmName}')">
-              <span>🗂 ${firmName}</span>
-              <span>[${firmJobs.length} İşlem] </span>
-            </div>
-            <div class="firm-content" id="folder-${firmName}">`;
-        
-        firmJobs.forEach(job => {
-          folderHTML += `
-            <div class="job-card" style="border-left-color: var(--green);">
-              <div class="job-header">
-                <div class="plate">${job.plate}</div>
-              </div>
-              <div class="task">> ${job.task}</div>
-              <div class="status-bar">
-                <button class="s-btn" onclick="updateStatus(${job.originalIndex}, 1)">GERİ AL (İŞLEMDE)</button>
-              </div>
-              <button class="delete-btn" onclick="deleteJob(${job.originalIndex})">KAYDI SİL</button>
-            </div>
-          `;
-        });
-
-        folderHTML += `</div></div>`;
-        list.innerHTML += folderHTML;
-      }
-      
-      if(Object.keys(firms).length === 0) {
-        list.innerHTML = "<p style='color:var(--neon); text-align:center;'>Arşivde bitmiş iş bulunmuyor.</p>";
+      for (const [firmName, firmJobs] of Object.entries(archiveFirms)) {
+        list.innerHTML += `
+          <div class="folder" onclick="openModal('${firmName}')">
+            <div class="folder-icon">🗂️</div>
+            <div class="folder-name">${firmName}</div>
+            <div class="folder-count">${firmJobs.length} İşlem Kaydı</div>
+          </div>
+        `;
       }
     }
 
-    function toggleFolder(firmName) {
-      const folder = document.getElementById(`folder-${firmName}`);
-      folder.style.display = folder.style.display === "block" ? "none" : "block";
+    function openModal(firmName) {
+      document.getElementById('folderList').style.display = 'none';
+      document.getElementById('archiveModal').style.display = 'block';
+      document.getElementById('modalTitle').innerText = "🗂️ " + firmName + " Kayıtları";
+      
+      const list = document.getElementById('modalJobs');
+      list.innerHTML = '';
+      
+      archiveFirms[firmName].forEach(job => {
+        const priceHTML = job.price ? `<div class="price-tag">${job.price} ₺</div>` : '';
+        list.innerHTML += `
+          <div class="job-card" style="border-top: 3px solid var(--border);">
+            <div class="card-top">
+              <div class="plate">${job.plate}</div>
+              <div class="task">${job.task}</div>
+              ${priceHTML}
+              <div class="time-tag">Kayıt: ${job.time || '-'}</div>
+            </div>
+            <button class="action-btn" style="background:var(--border); color:#fff;" onclick="updateStatus(${job.originalIndex}, 0)">GERİ AL</button>
+          </div>
+        `;
+      });
+    }
+
+    function closeModal() {
+      document.getElementById('archiveModal').style.display = 'none';
+      document.getElementById('folderList').style.display = 'grid';
     }
 
     function addJob() {
       const plate = document.getElementById('plate').value.trim().toUpperCase();
       const firm = document.getElementById('firm').value.trim().toUpperCase() || "BİLİNMEYEN FİRMA";
+      const price = document.getElementById('price').value.trim();
       const taskSelect = document.getElementById('task').value;
       const customTask = document.getElementById('customTask').value.trim().toUpperCase();
       
       let finalTask = taskSelect;
-      if(taskSelect === "DİĞER (ÖZEL İŞLEM)") {
-        finalTask = customTask;
-      }
+      if(taskSelect === "DİĞER (ÖZEL İŞLEM)") finalTask = customTask;
       
       if(!plate || !finalTask) { alert("Plaka ve İşlem seçmek zorunludur!"); return; }
       
-      jobs.push({ plate, firm, task: finalTask, status: 0 });
+      const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      
+      jobs.push({ plate, firm, task: finalTask, price, status: 0, time: currentTime });
       db.set(jobs);
       
       document.getElementById('plate').value = '';
       document.getElementById('firm').value = '';
+      document.getElementById('price').value = '';
       document.getElementById('task').value = '';
       document.getElementById('customTask').value = '';
       document.getElementById('customTask').style.display = 'none';
@@ -248,13 +289,6 @@
     function updateStatus(index, newStatus) {
       jobs[index].status = newStatus;
       db.set(jobs);
-    }
-
-    function deleteJob(index) {
-      if(confirm("Bu kaydı kalıcı olarak silmek istediğine emin misin?")) {
-        jobs.splice(index, 1);
-        db.set(jobs);
-      }
     }
   </script>
 </body>
