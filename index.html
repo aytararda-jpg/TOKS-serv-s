@@ -7,7 +7,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TOKS SERVİS">
   <title>TOKS // SERVİS SİSTEMİ</title>
-  <!-- PDF İndirme için jsPDF Kütüphanesi -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     :root { 
@@ -22,8 +21,9 @@
     .logo { display: flex; align-items: center; font-size: 1.5rem; font-weight: 900; letter-spacing: -1px; background: #fff; color: var(--toks-navy); padding: 2px 8px; border-radius: 4px; }
     .logo-arrow { color: var(--toks-yellow); font-size: 1.8rem; line-height: 1; margin-left: 2px; }
     
-    .info-widget { text-align: right; font-size: 0.7rem; color: #cbd5e1; }
+    .info-widget { text-align: right; font-size: 0.7rem; color: #cbd5e1; display: flex; flex-direction: column; align-items: flex-end; }
     .info-widget strong { color: var(--toks-yellow); font-size: 0.8rem; display: block; margin-top: 2px; }
+    .lock-btn { background: #1e293b; color: #fff; border: 1px solid var(--toks-yellow); padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; margin-top: 4px; cursor: pointer; font-weight: bold; }
 
     .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
     .tab { flex: 1; padding: 10px; text-align: center; border: 1px solid var(--border); color: #fff; cursor: pointer; font-weight: bold; background: var(--card-bg); border-radius: 4px; }
@@ -42,6 +42,7 @@
     .plate { font-size: 1.1rem; font-weight: bold; color: var(--toks-yellow); margin-bottom: 2px; }
     .firm { color: #94a3b8; font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .task { color: #fff; line-height: 1.2; margin-bottom: 6px; font-size: 0.85rem; }
+    .price-tag { font-size: 0.8rem; color: var(--green); font-weight: bold; margin-bottom: 4px; }
     
     .timeline { background: #02070d; border-radius: 4px; padding: 6px; margin-bottom: 8px; font-size: 0.6rem; color: #94a3b8; border: 1px solid #1e293b; }
     .timeline div { display: flex; justify-content: space-between; }
@@ -71,7 +72,7 @@
     </div>
     <div class="info-widget">
       <div id="clock">Yükleniyor...</div>
-      <strong id="euro-rate">€1 = Bekleniyor...</strong>
+      <button class="lock-btn" id="lockBtn" onclick="togglePrices()">🔒 Fiyatları Aç</button>
     </div>
   </header>
 
@@ -88,7 +89,7 @@
       </div>
       <div class="input-row">
         <input type="text" id="receipt" placeholder="FİŞ NO (Örn: 350052)">
-        <input type="number" id="price" placeholder="FİYAT (KDV HARİÇ)" style="width: 50%;">
+        <input type="number" id="price" placeholder="FİYAT (KDV HARİÇ)" style="width: 50%; display: none;" id="priceInput">
       </div>
       <input type="text" id="task" list="taskList" placeholder="YAPILACAK İŞLEMİ SEÇ VEYA YAZ">
       <datalist id="taskList">
@@ -119,16 +120,32 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
+    let pricesUnlocked = false;
+
+    function togglePrices() {
+      if (pricesUnlocked) {
+        pricesUnlocked = false;
+        document.getElementById('lockBtn').innerText = "🔒 Fiyatları Aç";
+        document.getElementById('price').style.display = "none";
+        renderAll();
+      } else {
+        let pass = prompt("Fiyatları ve ekleme alanını görmek için şifreyi giriniz:");
+        if (pass === "1907") {
+          pricesUnlocked = true;
+          document.getElementById('lockBtn').innerText = "🔓 Fiyatları Gizle";
+          document.getElementById('price').style.display = "block";
+          renderAll();
+        } else if (pass !== null) {
+          alert("Hatalı şifre!");
+        }
+      }
+    }
+
     function updateClock() {
       document.getElementById('clock').innerText = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
     }
     updateClock();
     setInterval(updateClock, 1000);
-
-    fetch('https://open.er-api.com/v6/latest/EUR')
-      .then(res => res.json())
-      .then(data => { document.getElementById('euro-rate').innerText = "€1 = " + data.rates.TRY.toFixed(2) + " ₺"; })
-      .catch(() => { document.getElementById('euro-rate').innerText = "Kur Alınamadı"; });
 
     const firebaseConfig = {
       apiKey: "AIzaSyBdJ2_Vs53h9dJq_KJciNPWix6OFvOZR5Y",
@@ -181,6 +198,8 @@
         const wTime = (hist.waiting || '-').slice(-5);
         const iTime = (hist.inProgress || '-').slice(-5);
         const fTime = (hist.finished || '-').slice(-5);
+        
+        const displayPrice = pricesUnlocked ? (job.price || 'Belirtilmemiş') : '🔒 Gizli';
 
         list.innerHTML += `
           <div class="job-card" style="border-top: 3px solid ${borderColor};">
@@ -188,6 +207,7 @@
               <div class="plate">${job.plate || ''} <span style="font-size:0.7rem; color:#94a3b8;">(Fiş: ${job.receipt || '-'})</span></div>
               <div class="firm">${job.firm || ''}</div>
               <div class="task">${job.task || ''}</div>
+              <div class="price-tag">Tutar: ${displayPrice}</div>
               <div class="timeline">
                 <div><span>Bekliyor:</span> ${wTime}</div>
                 <div><span>İşlemde:</span> ${iTime}</div>
@@ -250,6 +270,7 @@
           const wTime = hist.waiting || '-';
           const iTime = hist.inProgress || '-';
           const fTime = hist.finished || '-';
+          const displayPrice = pricesUnlocked ? (job.price || 'Belirtilmemiş') : '🔒 Gizli';
 
           list.innerHTML += `
             <div class="job-card" style="border-top: 3px solid var(--green);">
@@ -257,7 +278,7 @@
                 <div class="plate">${job.plate || ''} <span style="font-size:0.7rem; color:var(--toks-yellow);">(Fiş: ${job.receipt || '-'})</span></div>
                 <div class="firm">${job.firm || ''}</div>
                 <div class="task">${job.task || ''}</div>
-                <div style="font-size:0.75rem; color:var(--toks-yellow); margin-bottom:4px;">Tutar: ${job.price || 'Belirtilmemiş'}</div>
+                <div class="price-tag">Tutar: ${displayPrice}</div>
                 <div class="timeline">
                   <div><span>Bekliyor:</span> ${wTime}</div>
                   <div><span>İşlemde:</span> ${iTime}</div>
@@ -289,59 +310,88 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
+      // --- KARTVİZİT DİZAYNI (Milimetrik Çizim) ---
+      // 1. Sol Sütun (Arda Aytar Bilgileri)
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.setTextColor(10, 29, 58);
-      doc.text("TOKS Treyler Servis | Karoser (Kasa) Imalati", 20, 20);
-
+      doc.setFontSize(14);
+      doc.setTextColor(40, 40, 40);
+      doc.text("ARDA AYTAR", 15, 20);
+      
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(80, 80, 80);
-      doc.text("Yetkili: Arda Aytar", 20, 27);
-      doc.text("Kocaeli: +90 262 270 70 70  |  Izmir: +90 232 420 86 57  |  Mobil: +90 507 487 30 35", 20, 33);
+      doc.setFontSize(10);
+      doc.setTextColor(10, 29, 80); // TOKS Lacivert
+      doc.text("Mobil: +90 507 487 30 35", 15, 26);
+      doc.text("Kocaeli: +90 262 270 70 70", 15, 31);
+      doc.text("Izmir: +90 232 420 86 57", 15, 36);
 
-      doc.setDrawColor(255, 204, 0);
+      // Sol Ayırıcı Çizgi
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.5);
+      doc.line(65, 16, 65, 38);
+
+      // 2. Orta Sütun (TOKS Logosu)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(32);
+      doc.setTextColor(10, 29, 80); // TOKS Lacivert
+      doc.text("TOKS", 105, 29, { align: "center" });
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text("Treyler Servis | Karoser (Kasa) Imalati", 105, 35, { align: "center" });
+
+      // Sağ Ayırıcı Çizgi
+      doc.line(145, 16, 145, 38);
+
+      // 3. Sağ Sütun (branda.com Logosu)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.setTextColor(230, 0, 0); // Kırmızı
+      doc.text("branda.com", 195, 28, { align: "right" });
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text("Treyler Brandasi | Logo Yazimi", 195, 35, { align: "right" });
+
+      // Alt Çizgi
+      doc.setDrawColor(255, 204, 0); // TOKS Sarı
       doc.setLineWidth(1.5);
-      doc.line(20, 38, 190, 38);
+      doc.line(15, 45, 195, 45);
 
+      // --- RESMİ İÇERİK ---
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.setTextColor(255, 0, 85);
-      doc.text("SERI / FIS NO: " + (job.receipt || '-'), 190, 48, { align: "right" });
+      doc.text("SERI / FIS NO: " + (job.receipt || '-'), 195, 55, { align: "right" });
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
       doc.setTextColor(0, 0, 0);
-      doc.text(`Merhaba ${job.firm || ''} firmasi, islemde olan`, 20, 60);
-      doc.text(`${job.plate || ''} plakali araciniz icin asagida yapilan islem ve ucret bilgisi yer almaktadir.`, 20, 67);
+      doc.text(`Merhaba ${job.firm || ''} firmasi, islemde olan`, 15, 65);
+      doc.text(`${job.plate || ''} plakali araciniz icin asagida yapilan islem ve ucret bilgisi yer almaktadir.`, 15, 72);
 
+      // İşlem Kutusu
       doc.setDrawColor(200, 200, 200);
       doc.setFillColor(245, 247, 250);
-      doc.roundedRect(20, 78, 170, 65, 3, 3, 'FD');
+      doc.roundedRect(15, 85, 180, 65, 3, 3, 'FD');
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(10, 29, 58);
-      doc.text("SERVIS VE ISLEM DETAYLARI", 28, 90);
+      doc.text("SERVIS VE ISLEM DETAYLARI", 23, 97);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
-      doc.text(`Yapilan Islem: ${job.task || ''}`, 28, 102);
-      doc.text(`Toplam Tutar: ${job.price || 'Belirtilmemis'}`, 28, 112);
+      doc.text(`Yapilan Islem: ${job.task || ''}`, 23, 109);
+      
+      // PDF içerisine fiyat her halükarda eklenir (müşteriye atılacağı için)
+      doc.text(`Toplam Tutar: ${job.price || 'Belirtilmemis'}`, 23, 119);
       
       const hist = job.history || {};
-      doc.text(`Arac Giris Saati: ${hist.waiting || '-'}`, 28, 122);
-      doc.text(`Islem Cikis Saati: ${hist.finished || '-'}`, 28, 132);
-
-      doc.setDrawColor(255, 204, 0);
-      doc.line(20, 270, 190, 270);
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(10, 29, 58);
-      doc.text("Arda Aytar", 20, 278);
-      doc.text("branda.com", 190, 278, { align: "right" });
+      doc.text(`Arac Giris Saati: ${hist.waiting || '-'}`, 23, 129);
+      doc.text(`Islem Cikis Saati: ${hist.finished || '-'}`, 23, 139);
 
       const safeFirm = (job.firm || 'FIRMA').replace(/[^a-zA-Z0-9]/g, '_');
       const safePlate = (job.plate || 'PLAKA').replace(/[^a-zA-Z0-9]/g, '');
