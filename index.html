@@ -15,15 +15,15 @@
       --red: #ff0055; --blue: #00e5ff; --green: #00ff66;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, "SF Mono", monospace; }
-    body { background-color: var(--bg); color: #fff; padding: 15px; min-height: 100vh; padding-top: 70px; }
+    body { background-color: var(--bg); color: #fff; padding: 15px; min-height: 100vh; padding-top: 85px; }
     
     header { position: fixed; top: 0; left: 0; width: 100%; background: var(--toks-navy); padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; z-index: 100; border-bottom: 2px solid var(--toks-yellow); box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
     .logo { display: flex; align-items: center; font-size: 1.5rem; font-weight: 900; letter-spacing: -1px; background: #fff; color: var(--toks-navy); padding: 2px 8px; border-radius: 4px; }
     .logo-arrow { color: var(--toks-yellow); font-size: 1.8rem; line-height: 1; margin-left: 2px; }
     
     .info-widget { text-align: right; font-size: 0.7rem; color: #cbd5e1; display: flex; flex-direction: column; align-items: flex-end; }
-    .info-widget strong { color: var(--toks-yellow); font-size: 0.8rem; display: block; margin-top: 2px; }
-    .lock-btn { background: #1e293b; color: #fff; border: 1px solid var(--toks-yellow); padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; margin-top: 4px; cursor: pointer; font-weight: bold; }
+    .info-widget strong { color: var(--toks-yellow); font-size: 0.8rem; display: block; margin-top: 2px; margin-bottom: 4px; }
+    .lock-btn { background: #1e293b; color: #fff; border: 1px solid var(--toks-yellow); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; font-weight: bold; }
 
     .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
     .tab { flex: 1; padding: 10px; text-align: center; border: 1px solid var(--border); color: #fff; cursor: pointer; font-weight: bold; background: var(--card-bg); border-radius: 4px; }
@@ -42,7 +42,7 @@
     .plate { font-size: 1.1rem; font-weight: bold; color: var(--toks-yellow); margin-bottom: 2px; }
     .firm { color: #94a3b8; font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .task { color: #fff; line-height: 1.2; margin-bottom: 6px; font-size: 0.85rem; }
-    .price-tag { font-size: 0.8rem; color: var(--green); font-weight: bold; margin-bottom: 4px; }
+    .price-tag { font-size: 0.8rem; color: var(--green); font-weight: bold; margin-bottom: 6px; }
     
     .timeline { background: #02070d; border-radius: 4px; padding: 6px; margin-bottom: 8px; font-size: 0.6rem; color: #94a3b8; border: 1px solid #1e293b; }
     .timeline div { display: flex; justify-content: space-between; }
@@ -72,7 +72,8 @@
     </div>
     <div class="info-widget">
       <div id="clock">Yükleniyor...</div>
-      <button class="lock-btn" id="lockBtn" onclick="togglePrices()">🔒 Fiyatları Aç</button>
+      <strong id="euro-rate">€1 = Bekleniyor...</strong>
+      <button class="lock-btn" id="lockBtn" onclick="toggleAllPrices()">🔒 Tümünü Aç</button>
     </div>
   </header>
 
@@ -89,7 +90,15 @@
       </div>
       <div class="input-row">
         <input type="text" id="receipt" placeholder="FİŞ NO (Örn: 350052)">
-        <input type="number" id="price" placeholder="FİYAT (KDV HARİÇ)" style="width: 50%; display: none;" id="priceInput">
+        
+        <!-- Fiyat ve Kur Seçimi (Başlangıçta Gizli) -->
+        <div id="priceContainer" style="display: none; width: 50%; gap: 5px;">
+          <input type="number" id="price" placeholder="FİYAT (KDV HARİÇ)" style="width: 100%;">
+          <select id="currency" style="width: 70px; padding: 10px; background: #0f172a; color: #fff; border: 1px solid var(--border); border-radius: 4px; outline: none;">
+            <option value="TRY">₺</option>
+            <option value="EUR">€</option>
+          </select>
+        </div>
       </div>
       <input type="text" id="task" list="taskList" placeholder="YAPILACAK İŞLEMİ SEÇ VEYA YAZ">
       <datalist id="taskList">
@@ -120,33 +129,57 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
-    let pricesUnlocked = false;
+    // --- ŞİFRE VE KİLİT SİSTEMİ ---
+    let globalUnlock = false;
+    let unlockedIndices = new Set();
 
-    function togglePrices() {
-      if (pricesUnlocked) {
-        pricesUnlocked = false;
-        document.getElementById('lockBtn').innerText = "🔒 Fiyatları Aç";
-        document.getElementById('price').style.display = "none";
+    function unlockSinglePrice(index) {
+      let pass = prompt("Bu işlemin fiyatını görmek için şifreyi giriniz:");
+      if (pass === "1907") {
+        unlockedIndices.add(index);
+        renderAll();
+      } else if (pass !== null) {
+        alert("Hatalı şifre!");
+      }
+    }
+
+    function toggleAllPrices() {
+      if (globalUnlock) {
+        globalUnlock = false;
+        unlockedIndices.clear();
+        document.getElementById('lockBtn').innerText = "🔒 Tümünü Aç";
+        document.getElementById('priceContainer').style.display = "none";
         renderAll();
       } else {
-        let pass = prompt("Fiyatları ve ekleme alanını görmek için şifreyi giriniz:");
+        let pass = prompt("Tüm fiyatları ve ekleme alanını görmek için şifreyi giriniz:");
         if (pass === "1907") {
-          pricesUnlocked = true;
-          document.getElementById('lockBtn').innerText = "🔓 Fiyatları Gizle";
-          document.getElementById('price').style.display = "block";
-          renderAll();
+          forceUnlockAll();
         } else if (pass !== null) {
           alert("Hatalı şifre!");
         }
       }
     }
 
+    function forceUnlockAll() {
+      globalUnlock = true;
+      document.getElementById('lockBtn').innerText = "🔓 Tümünü Gizle";
+      document.getElementById('priceContainer').style.display = "flex";
+      renderAll();
+    }
+
+    // --- SAAT VE KUR ---
     function updateClock() {
       document.getElementById('clock').innerText = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
     }
     updateClock();
     setInterval(updateClock, 1000);
 
+    fetch('https://open.er-api.com/v6/latest/EUR')
+      .then(res => res.json())
+      .then(data => { document.getElementById('euro-rate').innerText = "€1 = " + data.rates.TRY.toFixed(2) + " ₺"; })
+      .catch(() => { document.getElementById('euro-rate').innerText = "Kur Alınamadı"; });
+
+    // --- FİREBASE BAĞLANTISI ---
     const firebaseConfig = {
       apiKey: "AIzaSyBdJ2_Vs53h9dJq_KJciNPWix6OFvOZR5Y",
       authDomain: "toks-servis.firebaseapp.com",
@@ -198,8 +231,13 @@
         const wTime = (hist.waiting || '-').slice(-5);
         const iTime = (hist.inProgress || '-').slice(-5);
         const fTime = (hist.finished || '-').slice(-5);
-        
-        const displayPrice = pricesUnlocked ? (job.price || 'Belirtilmemiş') : '🔒 Gizli';
+
+        let displayPrice = "";
+        if (globalUnlock || unlockedIndices.has(index)) {
+          displayPrice = job.price || 'Belirtilmemiş';
+        } else {
+          displayPrice = `<span onclick="unlockSinglePrice(${index})" style="cursor:pointer; background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem; border:1px solid #334155; font-weight:bold;">🔒 Fiyatı Gör</span>`;
+        }
 
         list.innerHTML += `
           <div class="job-card" style="border-top: 3px solid ${borderColor};">
@@ -270,7 +308,13 @@
           const wTime = hist.waiting || '-';
           const iTime = hist.inProgress || '-';
           const fTime = hist.finished || '-';
-          const displayPrice = pricesUnlocked ? (job.price || 'Belirtilmemiş') : '🔒 Gizli';
+          
+          let displayPrice = "";
+          if (globalUnlock || unlockedIndices.has(job.originalIndex)) {
+            displayPrice = job.price || 'Belirtilmemiş';
+          } else {
+            displayPrice = `<span onclick="unlockSinglePrice(${job.originalIndex})" style="cursor:pointer; background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem; border:1px solid #334155; font-weight:bold;">🔒 Fiyatı Gör</span>`;
+          }
 
           list.innerHTML += `
             <div class="job-card" style="border-top: 3px solid var(--green);">
@@ -303,6 +347,7 @@
       document.getElementById('folderList').style.display = 'grid';
     }
 
+    // --- PDF OLUŞTURUCU (Kartvizit Tasarımı) ---
     function generatePDF(index) {
       const job = jobs[index];
       if(!job) return;
@@ -310,7 +355,6 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      // --- KARTVİZİT DİZAYNI (Milimetrik Çizim) ---
       // 1. Sol Sütun (Arda Aytar Bilgileri)
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
@@ -319,7 +363,7 @@
       
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      doc.setTextColor(10, 29, 80); // TOKS Lacivert
+      doc.setTextColor(10, 29, 80);
       doc.text("Mobil: +90 507 487 30 35", 15, 26);
       doc.text("Kocaeli: +90 262 270 70 70", 15, 31);
       doc.text("Izmir: +90 232 420 86 57", 15, 36);
@@ -332,7 +376,7 @@
       // 2. Orta Sütun (TOKS Logosu)
       doc.setFont("helvetica", "bold");
       doc.setFontSize(32);
-      doc.setTextColor(10, 29, 80); // TOKS Lacivert
+      doc.setTextColor(10, 29, 80);
       doc.text("TOKS", 105, 29, { align: "center" });
       
       doc.setFont("helvetica", "normal");
@@ -346,7 +390,7 @@
       // 3. Sağ Sütun (branda.com Logosu)
       doc.setFont("helvetica", "bold");
       doc.setFontSize(22);
-      doc.setTextColor(230, 0, 0); // Kırmızı
+      doc.setTextColor(230, 0, 0); 
       doc.text("branda.com", 195, 28, { align: "right" });
       
       doc.setFont("helvetica", "normal");
@@ -355,7 +399,7 @@
       doc.text("Treyler Brandasi | Logo Yazimi", 195, 35, { align: "right" });
 
       // Alt Çizgi
-      doc.setDrawColor(255, 204, 0); // TOKS Sarı
+      doc.setDrawColor(255, 204, 0); 
       doc.setLineWidth(1.5);
       doc.line(15, 45, 195, 45);
 
@@ -386,8 +430,9 @@
       doc.setTextColor(0, 0, 0);
       doc.text(`Yapilan Islem: ${job.task || ''}`, 23, 109);
       
-      // PDF içerisine fiyat her halükarda eklenir (müşteriye atılacağı için)
-      doc.text(`Toplam Tutar: ${job.price || 'Belirtilmemis'}`, 23, 119);
+      // Standart PDF fontu ₺ ve € sembollerini bozduğu için otomatik harfe çevrilir (TL/EUR)
+      let pdfPrice = (job.price || 'Belirtilmemis').replace('₺', 'TL').replace('€', 'EUR');
+      doc.text(`Toplam Tutar: ${pdfPrice}`, 23, 119);
       
       const hist = job.history || {};
       doc.text(`Arac Giris Saati: ${hist.waiting || '-'}`, 23, 129);
@@ -404,12 +449,14 @@
       const receipt = document.getElementById('receipt').value.trim() || "-";
       const task = document.getElementById('task').value.trim().toUpperCase();
       const rawPrice = document.getElementById('price').value;
+      const curr = document.getElementById('currency').value;
       
       if(!plate || !task) { alert("Plaka ve İşlem doldurulmak zorundadır!"); return; }
       
       let finalPrice = "";
       if (rawPrice && !isNaN(rawPrice)) {
-        finalPrice = (parseFloat(rawPrice) * 1.2).toFixed(2) + " (KDV Dahil)";
+        let calc = (parseFloat(rawPrice) * 1.2).toFixed(2);
+        finalPrice = curr === 'EUR' ? calc + " € (KDV Dahil)" : calc + " ₺ (KDV Dahil)";
       }
 
       const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
@@ -428,12 +475,27 @@
     }
 
     function editJob(index) {
+      if(!globalUnlock) {
+        let pass = prompt("Düzenleme yapmak için şifreyi giriniz:");
+        if(pass === "1907") {
+          forceUnlockAll();
+        } else {
+          alert("Hatalı şifre!");
+          return;
+        }
+      }
+
       const job = jobs[index];
       document.getElementById('plate').value = job.plate || '';
       document.getElementById('firm').value = job.firm || '';
       document.getElementById('receipt').value = job.receipt || '';
       
       if(job.price) {
+        if(job.price.includes('€')) {
+           document.getElementById('currency').value = 'EUR';
+        } else {
+           document.getElementById('currency').value = 'TRY';
+        }
         try {
           let clean = parseFloat(job.price.split(' ')[0]) / 1.2;
           document.getElementById('price').value = Math.round(clean);
