@@ -125,12 +125,17 @@
         </div>
       </div>
       <input type="text" id="task" list="taskList" placeholder="YAPILACAK İŞLEMİ SEÇ VEYA YAZ">
+      <!-- YENİ İŞ KALEMLERİ EKLENDİ -->
       <datalist id="taskList">
         <option value="BRANDA YAMA">
         <option value="MERDİVEN MONTAJI">
         <option value="KAPAK TAMİRİ">
         <option value="ÇATI KALDIRMA MEKANİZMASI">
         <option value="KAYNAK İŞLEMİ">
+        <option value="YAĞMUR LASTİĞİ DEĞİŞİM">
+        <option value="ÇATI BRANDA DEĞİŞİM">
+        <option value="YAN BRANDA DEĞİŞİM">
+        <option value="TÜM BRANDA DEĞİŞİM">
       </datalist>
       <div style="display:flex; gap:10px;">
         <button class="btn" id="saveBtn" onclick="saveJob()">SİSTEME KAYDET</button>
@@ -153,7 +158,7 @@
     </div>
   </div>
 
-  <!-- BÜTÇE GÖRÜNÜMÜ (Yeni) -->
+  <!-- BÜTÇE GÖRÜNÜMÜ -->
   <div id="view-budget" style="display:none;">
     <div class="budget-card">
       <div class="budget-title">FİRMA CARİ DAĞILIMI (ARŞİVLENEN İŞLER)</div>
@@ -195,7 +200,7 @@
     let globalUnlock = false;
     let unlockedIndices = new Set();
     let currentEuroRate = 1;
-    let editingIndex = -1; // Düzenleme modu koruması
+    let editingIndex = -1; 
     let pieChartInstance = null;
     let barChartInstance = null;
 
@@ -416,17 +421,17 @@
     }
     function closeModal() { document.getElementById('archiveModal').style.display = 'none'; document.getElementById('folderList').style.display = 'grid'; }
 
-    // --- BÜTÇE İSTATİSTİKLERİ (Grafik) ---
+    // --- BÜTÇE İSTATİSTİKLERİ ---
     function renderBudget() {
       let companyTotals = {};
       let monthTotals = {};
       let grandTotal = 0;
 
       jobs.forEach(job => {
-        if(job && job.status === 3) { // Sadece arşivlenen/teslim edilenler
+        if(job && job.status === 3) { 
           let priceStr = job.price || "";
           let amount = parseFloat(priceStr) || 0;
-          if(priceStr.includes('€') || priceStr.includes('EUR')) { amount = amount * currentEuroRate; } // Euro yu anlık kurdan TRY'ye çevir
+          if(priceStr.includes('€') || priceStr.includes('EUR')) { amount = amount * currentEuroRate; } 
           
           let firm = job.firm || "BİLİNMEYEN FİRMA";
           companyTotals[firm] = (companyTotals[firm] || 0) + amount;
@@ -436,14 +441,13 @@
           if (fDate) {
             let parts = fDate.split(' ')[0].split('.');
             if(parts.length === 3) {
-              let monthKey = `${parts[1]}/${parts[2]}`; // MM/YYYY
+              let monthKey = `${parts[1]}/${parts[2]}`; 
               monthTotals[monthKey] = (monthTotals[monthKey] || 0) + amount;
             }
           }
         }
       });
 
-      // Şirket Listesi
       let listHTML = "";
       for (const [firm, total] of Object.entries(companyTotals)) {
         listHTML += `<div class="budget-row"><span>🏢 ${firm}</span><span style="color:var(--green); font-weight:bold;">${Math.round(total).toLocaleString('tr-TR')} ₺</span></div>`;
@@ -451,7 +455,6 @@
       document.getElementById('firmBalances').innerHTML = listHTML;
       document.getElementById('grandTotal').innerText = `TOPLAM: ${Math.round(grandTotal).toLocaleString('tr-TR')} ₺`;
 
-      // Grafikler
       if(pieChartInstance) pieChartInstance.destroy();
       if(barChartInstance) barChartInstance.destroy();
 
@@ -541,16 +544,14 @@
       }
 
       if (editingIndex > -1) {
-        // GEÇMİŞİ BOZMADAN SADECE BİLGİLERİ GÜNCELLE
         jobs[editingIndex].plate = plate;
         jobs[editingIndex].firm = firm;
         jobs[editingIndex].receipt = receipt;
         jobs[editingIndex].task = task;
         jobs[editingIndex].price = finalPrice;
         db.set(jobs);
-        cancelEdit(); // Ekranı temizle ve butonu sıfırla
+        cancelEdit(); 
       } else {
-        // YENİ İŞ KAYDI
         const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
         jobs.push({ plate, firm, receipt, task, price: finalPrice, status: 0, history: { waiting: currentTime, inProgress: '-', finished: '-' } });
         db.set(jobs);
