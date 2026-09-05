@@ -32,11 +32,9 @@
     .input-panel { background: var(--card-bg); border: 1px solid var(--border); padding: 15px; margin-bottom: 15px; border-radius: 8px; border-top: 3px solid var(--toks-yellow); }
     .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
     
-    /* Input alanları ve butonlar */
     input, select, datalist { width: 100%; background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 10px; font-size: 0.9rem; outline: none; border-radius: 4px; text-transform: uppercase; }
     input:focus, select:focus { border-color: var(--toks-yellow); }
     
-    /* Sayısal inputlarda okları gizleme (Masaüstü için) */
     input[type=number]::-webkit-inner-spin-button, 
     input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type=number] { -moz-appearance: textfield; }
@@ -70,11 +68,11 @@
     #archiveModal { display: none; margin-top: 15px; }
     .modal-title { font-size: 1.1rem; color: var(--toks-yellow); margin-bottom: 10px; font-weight: bold; }
 
-    /* Şifre Paneli Özel Tasarımı */
+    /* Şifre Paneli Özel Tasarımı (Mobil Tuş Takımlı) */
     #pinModalOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; }
     .pin-box { background: var(--toks-navy); padding: 25px; border-radius: 8px; border: 2px solid var(--toks-yellow); width: 85%; max-width: 320px; text-align: center; }
     .pin-box h3 { color: var(--toks-yellow); margin-bottom: 15px; font-size: 1.1rem; }
-    .pin-box input { width: 100%; text-align: center; font-size: 1.8rem; letter-spacing: 8px; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 2px solid var(--border); background: #06090e; color: #fff; }
+    .pin-box input { width: 100%; text-align: center; font-size: 1.8rem; letter-spacing: 8px; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 2px solid var(--border); background: #06090e; color: #fff; -webkit-text-security: disc; }
     .pin-box input:focus { border-color: var(--toks-yellow); }
     .pin-buttons { display: flex; gap: 10px; }
   </style>
@@ -107,12 +105,11 @@
         <input type="text" id="firm" placeholder="MÜŞTERİ / FİRMA" style="width: 50%;">
       </div>
       <div class="input-row">
-        <!-- Rakam Klavyesi İçin: type="number" ve inputmode="numeric" eklendi -->
+        <!-- Rakam Klavyesi İçin -->
         <input type="number" inputmode="numeric" pattern="[0-9]*" id="receipt" placeholder="FİŞ NO (Örn: 350052)">
         
-        <!-- Fiyat ve Kur Seçimi (Başlangıçta Gizli) -->
-        <div id="priceContainer" style="display: none; width: 50%; gap: 5px;">
-          <!-- Rakam Klavyesi İçin -->
+        <!-- Fiyat ve Kur Seçimi (Her Zaman Açık) -->
+        <div id="priceContainer" style="display: flex; width: 50%; gap: 5px;">
           <input type="number" inputmode="numeric" pattern="[0-9]*" id="price" placeholder="FİYAT (KDV HARİÇ)" style="width: 100%;">
           <select id="currency" style="width: 70px; padding: 10px; background: #0f172a; color: #fff; border: 1px solid var(--border); border-radius: 4px; outline: none;">
             <option value="TRY">₺</option>
@@ -150,8 +147,8 @@
   <div id="pinModalOverlay">
     <div class="pin-box">
       <h3>Sisteme Şifre Giriniz</h3>
-      <!-- Sadece Rakam Klavyesi Açılır -->
-      <input type="password" inputmode="numeric" pattern="[0-9]*" id="pinInput" placeholder="****">
+      <!-- Sadece Rakam Klavyesi Açılır ve Noktalarla Gizlenir -->
+      <input type="tel" id="pinInput" placeholder="****">
       <div class="pin-buttons">
         <button class="btn" style="background:#334155; color:#fff;" onclick="closePinModal()">İPTAL</button>
         <button class="btn" onclick="submitPin()">ONAYLA</button>
@@ -171,7 +168,6 @@
       document.getElementById('pinModalOverlay').style.display = 'flex';
       const input = document.getElementById('pinInput');
       input.value = '';
-      // Otomatik klavye açılması için
       setTimeout(() => input.focus(), 100);
     }
 
@@ -181,7 +177,8 @@
     }
 
     function submitPin() {
-      const pin = document.getElementById('pinInput').value;
+      // .trim() ile yanlışlıkla atılan boşlukları temizler
+      const pin = document.getElementById('pinInput').value.trim();
       if (pin === "1907") {
         closePinModal();
         if (pinSuccessCallback) pinSuccessCallback();
@@ -202,7 +199,6 @@
     let unlockedIndices = new Set();
 
     function toggleSinglePrice(index) {
-      // Eğer tekil kilit açıksa şifre sor, doğruysa göster
       showPinModal(() => {
         unlockedIndices.add(index);
         renderAll();
@@ -210,7 +206,6 @@
     }
 
     function lockSinglePrice(index) {
-      // Kilitle butonuna basılınca tekrar gizler
       unlockedIndices.delete(index);
       renderAll();
     }
@@ -220,7 +215,6 @@
         globalUnlock = false;
         unlockedIndices.clear();
         document.getElementById('lockBtn').innerText = "🔒 Tümünü Aç";
-        document.getElementById('priceContainer').style.display = "none";
         renderAll();
       } else {
         showPinModal(() => {
@@ -232,7 +226,6 @@
     function forceUnlockAll() {
       globalUnlock = true;
       document.getElementById('lockBtn').innerText = "🔓 Tümünü Gizle";
-      document.getElementById('priceContainer').style.display = "flex";
       renderAll();
     }
 
@@ -305,9 +298,7 @@
         const fTime = (hist.finished || '-').slice(-5);
 
         let displayPrice = "";
-        if (globalUnlock) {
-          displayPrice = job.price || 'Belirtilmemiş';
-        } else if (unlockedIndices.has(index)) {
+        if (globalUnlock || unlockedIndices.has(index)) {
           displayPrice = `${job.price || 'Belirtilmemiş'} <span onclick="lockSinglePrice(${index})" style="cursor:pointer; margin-left:8px; font-size:1.1rem;" title="Tekrar Gizle">🔓</span>`;
         } else {
           displayPrice = `<span onclick="toggleSinglePrice(${index})" style="cursor:pointer; background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem; border:1px solid #334155; font-weight:bold;">🔒 Fiyatı Gör</span>`;
@@ -387,9 +378,7 @@
           let displayPrice = "";
           let actualIndex = job.originalIndex;
           
-          if (globalUnlock) {
-            displayPrice = job.price || 'Belirtilmemiş';
-          } else if (unlockedIndices.has(actualIndex)) {
+          if (globalUnlock || unlockedIndices.has(actualIndex)) {
              displayPrice = `${job.price || 'Belirtilmemiş'} <span onclick="lockSinglePrice(${actualIndex})" style="cursor:pointer; margin-left:8px; font-size:1.1rem;" title="Tekrar Gizle">🔓</span>`;
           } else {
             displayPrice = `<span onclick="toggleSinglePrice(${actualIndex})" style="cursor:pointer; background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem; border:1px solid #334155; font-weight:bold;">🔒 Fiyatı Gör</span>`;
