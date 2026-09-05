@@ -7,6 +7,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TOKS SERVİS">
   <title>TOKS // SERVİS SİSTEMİ</title>
+  <!-- PDF İndirme için jsPDF Kütüphanesi -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     :root { 
       --bg: #06090e; --card-bg: rgba(10, 20, 30, 0.85); --border: #334155; 
@@ -34,7 +36,6 @@
     
     .btn { width: 100%; background: var(--toks-yellow); color: var(--toks-navy); padding: 12px; font-weight: 900; cursor: pointer; border: none; border-radius: 4px; margin-top: 5px; }
     
-    /* Kompakt Izgara Düzeni (2 Sütun) */
     .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
     
     .job-card { background: var(--card-bg); border: 1px solid var(--border); padding: 10px; display: flex; flex-direction: column; justify-content: space-between; border-radius: 6px; font-size: 0.8rem; }
@@ -46,7 +47,6 @@
     .timeline div { display: flex; justify-content: space-between; }
     .timeline span { color: var(--toks-yellow); }
 
-    /* Buton Gridleri */
     .status-grid { display: flex; gap: 3px; margin-top: auto; }
     .s-btn { flex: 1; padding: 6px 0; font-size: 0.6rem; font-weight: bold; cursor: pointer; border: 1px solid var(--border); border-radius: 4px; background: #0f172a; color: #94a3b8; text-align: center; }
     .s-btn.active-0 { background: var(--red); color: #fff; border-color: var(--red); }
@@ -59,7 +59,7 @@
     .folder-name { font-weight: bold; color: #fff; font-size: 0.85rem; word-break: break-word; }
     .folder-count { font-size: 0.7rem; color: var(--toks-yellow); margin-top: 5px; }
     
-    #archiveModal { display: none; margin-top: 15px; padding: 15px; background: #0f172a; border-radius: 8px; border: 1px solid var(--border); }
+    #archiveModal { display: none; margin-top: 15px; }
     .modal-title { font-size: 1.1rem; color: var(--toks-yellow); margin-bottom: 10px; font-weight: bold; }
   </style>
 </head>
@@ -90,7 +90,6 @@
         <input type="text" id="receipt" placeholder="FİŞ NO (Örn: 350052)">
         <input type="number" id="price" placeholder="FİYAT (KDV HARİÇ)" style="width: 50%;">
       </div>
-      <!-- Serbest Yazılabilir İşlem Alanı -->
       <input type="text" id="task" list="taskList" placeholder="YAPILACAK İŞLEMİ SEÇ VEYA YAZ">
       <datalist id="taskList">
         <option value="BRANDA YAMA">
@@ -108,8 +107,10 @@
   <div id="view-archive" style="display:none;">
     <div class="grid-container" id="folderList"></div>
     <div id="archiveModal">
-      <div class="modal-title" id="modalTitle"></div>
-      <button class="btn" onclick="closeModal()" style="margin-bottom: 10px; background:var(--border); color:#fff;">Geri Dön</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div class="modal-title" id="modalTitle" style="margin:0;"></div>
+        <button onclick="closeModal()" style="background:var(--border); color:#fff; border:none; padding:8px 15px; border-radius:4px; font-weight:bold; cursor:pointer;">← Klasörlere Dön</button>
+      </div>
       <div class="grid-container" id="modalJobs"></div>
     </div>
   </div>
@@ -118,9 +119,11 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
-    setInterval(() => {
+    function updateClock() {
       document.getElementById('clock').innerText = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-    }, 1000);
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
 
     fetch('https://open.er-api.com/v6/latest/EUR')
       .then(res => res.json())
@@ -167,25 +170,28 @@
       list.innerHTML = '';
       
       jobs.forEach((job, index) => {
-        if(job.status === 3) return;
+        if(!job || job.status === 3) return;
         
         let c0 = job.status === 0 ? 'active-0' : '';
         let c1 = job.status === 1 ? 'active-1' : '';
         let c2 = job.status === 2 ? 'active-2' : '';
         let borderColor = job.status === 0 ? 'var(--red)' : (job.status === 1 ? 'var(--toks-yellow)' : 'var(--blue)');
         
-        const history = job.history || { waiting: '-', inProgress: '-', finished: '-' };
+        const hist = job.history || {};
+        const wTime = (hist.waiting || '-').slice(-5);
+        const iTime = (hist.inProgress || '-').slice(-5);
+        const fTime = (hist.finished || '-').slice(-5);
 
         list.innerHTML += `
           <div class="job-card" style="border-top: 3px solid ${borderColor};">
             <div>
-              <div class="plate">${job.plate} <span style="font-size:0.7rem; color:#94a3b8;">(Fiş: ${job.receipt || '-'})</span></div>
-              <div class="firm">${job.firm}</div>
-              <div class="task">${job.task}</div>
+              <div class="plate">${job.plate || ''} <span style="font-size:0.7rem; color:#94a3b8;">(Fiş: ${job.receipt || '-'})</span></div>
+              <div class="firm">${job.firm || ''}</div>
+              <div class="task">${job.task || ''}</div>
               <div class="timeline">
-                <div><span>Bekliyor:</span> ${history.waiting.slice(-5)}</div>
-                <div><span>İşlemde:</span> ${history.inProgress.slice(-5)}</div>
-                <div><span>Bitti:</span> ${history.finished.slice(-5)}</div>
+                <div><span>Bekliyor:</span> ${wTime}</div>
+                <div><span>İşlemde:</span> ${iTime}</div>
+                <div><span>Bitti:</span> ${fTime}</div>
               </div>
             </div>
             <div>
@@ -195,7 +201,7 @@
                 <button class="s-btn ${c2}" onclick="updateStatus(${index}, 2)">BİTTİ</button>
                 <button class="s-btn s-btn-archive" onclick="updateStatus(${index}, 3)">ARŞİV</button>
               </div>
-              <div style="display:flex; justify-content:space-between;">
+              <div style="display:flex; justify-content:space-between; margin-top:4px;">
                 <button onclick="editJob(${index})" style="background:transparent; border:1px solid #cbd5e1; color:#cbd5e1; font-size:0.6rem; padding:2px 8px; border-radius:3px; cursor:pointer;">DÜZENLE</button>
                 <button onclick="deleteJob(${index})" style="background:transparent; border:1px solid var(--red); color:var(--red); font-size:0.6rem; padding:2px 8px; border-radius:3px; cursor:pointer;">SİL</button>
               </div>
@@ -212,15 +218,16 @@
       archiveFirms = {};
       
       jobs.forEach((job, index) => {
-        if(job.status === 3) {
-          if(!archiveFirms[job.firm]) archiveFirms[job.firm] = [];
-          archiveFirms[job.firm].push({ ...job, originalIndex: index });
+        if(job && job.status === 3) {
+          let fname = job.firm || "BİLİNMEYEN FİRMA";
+          if(!archiveFirms[fname]) archiveFirms[fname] = [];
+          archiveFirms[fname].push({ ...job, originalIndex: index });
         }
       });
 
       for (const [firmName, firmJobs] of Object.entries(archiveFirms)) {
         list.innerHTML += `
-          <div class="folder" onclick="openModal('${firmName}')">
+          <div class="folder" onclick="openModal('${firmName.replace(/'/g, "\\'")}')">
             <div class="folder-icon">🗂️</div>
             <div class="folder-name">${firmName}</div>
             <div class="folder-count">${firmJobs.length} İşlem</div>
@@ -237,25 +244,108 @@
       const list = document.getElementById('modalJobs');
       list.innerHTML = '';
       
-      archiveFirms[firmName].forEach(job => {
-        list.innerHTML += `
-          <div class="job-card" style="border-top: 3px solid var(--border);">
-            <div>
-              <div class="plate">${job.plate} <span style="font-size:0.7rem; color:#94a3b8;">(Fiş: ${job.receipt || '-'})</span></div>
-              <div class="task">${job.task}</div>
+      if(archiveFirms[firmName]) {
+        archiveFirms[firmName].forEach(job => {
+          const hist = job.history || {};
+          const wTime = hist.waiting || '-';
+          const iTime = hist.inProgress || '-';
+          const fTime = hist.finished || '-';
+
+          list.innerHTML += `
+            <div class="job-card" style="border-top: 3px solid var(--green);">
+              <div>
+                <div class="plate">${job.plate || ''} <span style="font-size:0.7rem; color:var(--toks-yellow);">(Fiş: ${job.receipt || '-'})</span></div>
+                <div class="firm">${job.firm || ''}</div>
+                <div class="task">${job.task || ''}</div>
+                <div style="font-size:0.75rem; color:var(--toks-yellow); margin-bottom:4px;">Tutar: ${job.price || 'Belirtilmemiş'}</div>
+                <div class="timeline">
+                  <div><span>Bekliyor:</span> ${wTime}</div>
+                  <div><span>İşlemde:</span> ${iTime}</div>
+                  <div><span>Bitti:</span> ${fTime}</div>
+                </div>
+              </div>
+              <div>
+                <button class="btn" style="background:var(--toks-yellow); color:var(--toks-navy); padding:8px; font-size:0.75rem; margin-bottom:5px;" onclick="generatePDF(${job.originalIndex})">📄 PDF İNDİR</button>
+                <div style="display:flex; gap:5px;">
+                  <button class="s-btn" style="background:var(--border); color:#fff; padding:6px;" onclick="updateStatus(${job.originalIndex}, 0)">GERİ AL</button>
+                  <button class="s-btn" style="background:var(--red); color:#fff; padding:6px;" onclick="deleteJob(${job.originalIndex})">SİL</button>
+                </div>
+              </div>
             </div>
-            <div style="display:flex; gap:5px; margin-top:8px;">
-              <button class="s-btn" style="background:var(--border); color:#fff;" onclick="updateStatus(${job.originalIndex}, 0)">GERİ AL</button>
-              <button class="s-btn" style="background:var(--red); color:#fff;" onclick="deleteJob(${job.originalIndex})">SİL</button>
-            </div>
-          </div>
-        `;
-      });
+          `;
+        });
+      }
     }
 
     function closeModal() {
       document.getElementById('archiveModal').style.display = 'none';
       document.getElementById('folderList').style.display = 'grid';
+    }
+
+    function generatePDF(index) {
+      const job = jobs[index];
+      if(!job) return;
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(10, 29, 58);
+      doc.text("TOKS Treyler Servis | Karoser (Kasa) Imalati", 20, 20);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 80);
+      doc.text("Yetkili: Arda Aytar", 20, 27);
+      doc.text("Kocaeli: +90 262 270 70 70  |  Izmir: +90 232 420 86 57  |  Mobil: +90 507 487 30 35", 20, 33);
+
+      doc.setDrawColor(255, 204, 0);
+      doc.setLineWidth(1.5);
+      doc.line(20, 38, 190, 38);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(255, 0, 85);
+      doc.text("SERI / FIS NO: " + (job.receipt || '-'), 190, 48, { align: "right" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Merhaba ${job.firm || ''} firmasi, islemde olan`, 20, 60);
+      doc.text(`${job.plate || ''} plakali araciniz icin asagida yapilan islem ve ucret bilgisi yer almaktadir.`, 20, 67);
+
+      doc.setDrawColor(200, 200, 200);
+      doc.setFillColor(245, 247, 250);
+      doc.roundedRect(20, 78, 170, 65, 3, 3, 'FD');
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(10, 29, 58);
+      doc.text("SERVIS VE ISLEM DETAYLARI", 28, 90);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Yapilan Islem: ${job.task || ''}`, 28, 102);
+      doc.text(`Toplam Tutar: ${job.price || 'Belirtilmemis'}`, 28, 112);
+      
+      const hist = job.history || {};
+      doc.text(`Arac Giris Saati: ${hist.waiting || '-'}`, 28, 122);
+      doc.text(`Islem Cikis Saati: ${hist.finished || '-'}`, 28, 132);
+
+      doc.setDrawColor(255, 204, 0);
+      doc.line(20, 270, 190, 270);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(10, 29, 58);
+      doc.text("Arda Aytar", 20, 278);
+      doc.text("branda.com", 190, 278, { align: "right" });
+
+      const safeFirm = (job.firm || 'FIRMA').replace(/[^a-zA-Z0-9]/g, '_');
+      const safePlate = (job.plate || 'PLAKA').replace(/[^a-zA-Z0-9]/g, '');
+      doc.save(`${safeFirm}_${safePlate}.pdf`);
     }
 
     function addJob() {
