@@ -8,7 +8,6 @@
   <meta name="apple-mobile-web-app-title" content="TOKS SERVİS">
   <title>TOKS // SERVİS SİSTEMİ</title>
   
-  <!-- PDF ve Grafik Kütüphaneleri -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -106,7 +105,6 @@
     <div class="tab" onclick="switchTab('budget')" id="tab-budget">BÜTÇE</div>
   </div>
 
-  <!-- AKTİF İŞLER -->
   <div id="view-active">
     <div class="input-panel">
       <div class="input-row">
@@ -144,7 +142,6 @@
     <div class="grid-container" id="jobList"></div>
   </div>
 
-  <!-- ARŞİV GÖRÜNÜMÜ -->
   <div id="view-archive" style="display:none;">
     <div class="grid-container" id="folderList"></div>
     <div id="archiveModal">
@@ -156,7 +153,6 @@
     </div>
   </div>
 
-  <!-- BÜTÇE GÖRÜNÜMÜ -->
   <div id="view-budget" style="display:none;">
     <div class="budget-card">
       <div class="budget-title">FİRMA CARİ DAĞILIMI (ARŞİVLENEN İŞLER)</div>
@@ -179,7 +175,6 @@
     </div>
   </div>
 
-  <!-- ÖZEL ŞİFRE (PIN) MODALI -->
   <div id="pinModalOverlay">
     <div class="pin-box">
       <h3>Sisteme Şifre Giriniz</h3>
@@ -359,7 +354,6 @@
               <div class="task">${job.task || ''}</div>
               <div class="price-tag">Tutar: ${displayPrice}</div>
               
-              <!-- Tam Tarih Çizelgesi -->
               <div class="timeline">
                 <div><span>Giriş:</span> ${wTime}</div>
                 <div><span>İşlem:</span> ${iTime}</div>
@@ -383,7 +377,7 @@
       });
     }
 
-    // --- ARŞİV KLASÖRLERİ ---
+    // --- ARŞİV KLASÖRLER ---
     let archiveFirms = {};
     function renderFolders() {
       const list = document.getElementById('folderList'); list.innerHTML = ''; archiveFirms = {};
@@ -437,7 +431,6 @@
                 <div class="task">${job.task || ''}</div>
                 <div class="price-tag">Tutar: ${displayPrice}</div>
                 
-                <!-- Arşiv İçi Tarih Çizelgesi Eklendi -->
                 <div class="timeline">
                   <div><span>Giriş:</span> ${wTime}</div>
                   <div><span>İşlem:</span> ${iTime}</div>
@@ -604,13 +597,24 @@
       }
     }
 
+    // MANTIK DÜZELTİLMESİ: Geri Al tuşunda "Giriş" saati bozulmaz, "Çıkış" sıfırlanır.
     function updateStatus(index, newStatus) {
       jobs[index].status = newStatus;
       const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-      if(!jobs[index].history) jobs[index].history = { waiting: '-', inProgress: '-', finished: '-' };
       
-      if(newStatus === 0) jobs[index].history.waiting = currentTime;
-      if(newStatus === 1) jobs[index].history.inProgress = currentTime;
+      if(!jobs[index].history) {
+        jobs[index].history = { waiting: currentTime, inProgress: '-', finished: '-' };
+      }
+
+      if(newStatus === 0) {
+         // Bekleye/Geri alındıysa çıkış saatini sıfırla ki yeniden bitti dediğinde yeni tarih atılsın. Giriş (waiting) saati ASLA DEĞİŞMEZ.
+         jobs[index].history.finished = '-';
+      }
+      
+      if(newStatus === 1) {
+        jobs[index].history.inProgress = currentTime;
+        jobs[index].history.finished = '-';
+      }
       
       if(newStatus === 2) {
         jobs[index].history.finished = currentTime;
