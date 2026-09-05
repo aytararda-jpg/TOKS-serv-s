@@ -233,7 +233,8 @@
     function openModal(firmName) {
       document.getElementById('folderList').style.display = 'none';
       document.getElementById('archiveModal').style.display = 'block';
-      document.getElementById('modalTitle'].innerText = "🗂️ " + firmName;
+      // SÖZ DİZİMİ HATASI DÜZELTİLDİ: 'modalTitle] -> 'modalTitle')
+      document.getElementById('modalTitle').innerText = "🗂️ " + firmName;
       
       const list = document.getElementById('modalJobs');
       list.innerHTML = '';
@@ -275,11 +276,10 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      // Üst Kurumsal Başlık
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.setTextColor(10, 29, 58); // TOKS Lacivert
-      doc.text("TOKS Treyler Servis | Karoser (Kasa) İmalatı", 20, 20);
+      doc.text("TOKS Treyler Servis | Karoser (Kasa) Imalati", 20, 20);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
@@ -287,25 +287,21 @@
       doc.text("Yetkili: Arda Aytar", 20, 27);
       doc.text("Kocaeli: +90 262 270 70 70  |  Izmir: +90 232 420 86 57  |  Mobil: +90 507 487 30 35", 20, 33);
 
-      // Sarı Çizgi
       doc.setDrawColor(255, 204, 0); // TOKS Sarı
       doc.setLineWidth(1.5);
       doc.line(20, 38, 190, 38);
 
-      // Fiş Numarası (Sağ Üst)
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.setTextColor(255, 0, 85);
       doc.text("SERI / FIS NO: " + (job.receipt || '-'), 190, 48, { align: "right" });
 
-      // Resmi Karşılama Mesajı
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
       doc.setTextColor(0, 0, 0);
-      doc.text(`Merhaba ${job.firm || ''} firması, işlemde olan`, 20, 60);
-      doc.text(`${job.plate || ''} plakalı aracınız için aşağıda yapılan işlem ve ücret bilgisi yer almaktadır.`, 20, 67);
+      doc.text(`Merhaba ${job.firm || ''} firmasi, islemde olan`, 20, 60);
+      doc.text(`${job.plate || ''} plakali araciniz icin asagida yapilan islem ve ucret bilgisi yer almaktadir.`, 20, 67);
 
-      // İşlem Detay Kutusu
       doc.setDrawColor(200, 200, 200);
       doc.setFillColor(245, 247, 250);
       doc.roundedRect(20, 78, 170, 65, 3, 3, 'FD');
@@ -318,14 +314,13 @@
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
-      doc.text(`Yapılan İşlem: ${job.task || ''}`, 28, 102);
-      doc.text(`Toplam Tutar: ${job.price || 'Belirtilmemiş'}`, 28, 112);
+      doc.text(`Yapilan Islem: ${job.task || ''}`, 28, 102);
+      doc.text(`Toplam Tutar: ${job.price || 'Belirtilmemis'}`, 28, 112);
       
       const history = job.history || { waiting: '-', finished: '-' };
-      doc.text(`Araç Giriş Saati: ${history.waiting}`, 28, 122);
-      doc.text(`İşlem Çıkış Saati: ${history.finished}`, 28, 132);
+      doc.text(`Arac Giris Saati: ${history.waiting}`, 28, 122);
+      doc.text(`Islem Cikis Saati: ${history.finished}`, 28, 132);
 
-      // Alt Kurumsal İmza (Arda Aytar & branda.com)
       doc.setDrawColor(255, 204, 0);
       doc.line(20, 270, 190, 270);
 
@@ -335,7 +330,6 @@
       doc.text("Arda Aytar", 20, 278);
       doc.text("branda.com", 190, 278, { align: "right" });
 
-      // Dosyayı İndir
       const safeFirm = (job.firm || 'FIRMA').replace(/[^a-zA-Z0-9]/g, '_');
       const safePlate = (job.plate || 'PLAKA').replace(/[^a-zA-Z0-9]/g, '');
       doc.save(`${safeFirm}_${safePlate}.pdf`);
