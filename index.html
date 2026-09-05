@@ -31,9 +31,16 @@
 
     .input-panel { background: var(--card-bg); border: 1px solid var(--border); padding: 15px; margin-bottom: 15px; border-radius: 8px; border-top: 3px solid var(--toks-yellow); }
     .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    
+    /* Input alanları ve butonlar */
     input, select, datalist { width: 100%; background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 10px; font-size: 0.9rem; outline: none; border-radius: 4px; text-transform: uppercase; }
     input:focus, select:focus { border-color: var(--toks-yellow); }
     
+    /* Sayısal inputlarda okları gizleme (Masaüstü için) */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+
     .btn { width: 100%; background: var(--toks-yellow); color: var(--toks-navy); padding: 12px; font-weight: 900; cursor: pointer; border: none; border-radius: 4px; margin-top: 5px; }
     
     .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
@@ -42,7 +49,7 @@
     .plate { font-size: 1.1rem; font-weight: bold; color: var(--toks-yellow); margin-bottom: 2px; }
     .firm { color: #94a3b8; font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .task { color: #fff; line-height: 1.2; margin-bottom: 6px; font-size: 0.85rem; }
-    .price-tag { font-size: 0.8rem; color: var(--green); font-weight: bold; margin-bottom: 6px; }
+    .price-tag { font-size: 0.8rem; color: var(--green); font-weight: bold; margin-bottom: 6px; display:flex; align-items:center; }
     
     .timeline { background: #02070d; border-radius: 4px; padding: 6px; margin-bottom: 8px; font-size: 0.6rem; color: #94a3b8; border: 1px solid #1e293b; }
     .timeline div { display: flex; justify-content: space-between; }
@@ -62,10 +69,19 @@
     
     #archiveModal { display: none; margin-top: 15px; }
     .modal-title { font-size: 1.1rem; color: var(--toks-yellow); margin-bottom: 10px; font-weight: bold; }
+
+    /* Şifre Paneli Özel Tasarımı */
+    #pinModalOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; }
+    .pin-box { background: var(--toks-navy); padding: 25px; border-radius: 8px; border: 2px solid var(--toks-yellow); width: 85%; max-width: 320px; text-align: center; }
+    .pin-box h3 { color: var(--toks-yellow); margin-bottom: 15px; font-size: 1.1rem; }
+    .pin-box input { width: 100%; text-align: center; font-size: 1.8rem; letter-spacing: 8px; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 2px solid var(--border); background: #06090e; color: #fff; }
+    .pin-box input:focus { border-color: var(--toks-yellow); }
+    .pin-buttons { display: flex; gap: 10px; }
   </style>
 </head>
 <body>
 
+  <!-- Kilit ve Kur Bilgisi (Header) -->
   <header>
     <div style="display:flex; align-items:center;">
       <div class="logo">TOKS</div><div class="logo-arrow">〉</div>
@@ -77,11 +93,13 @@
     </div>
   </header>
 
+  <!-- Sekmeler -->
   <div class="tabs">
     <div class="tab active" onclick="switchTab('active')" id="tab-active">AKTİF İŞLER</div>
     <div class="tab" onclick="switchTab('archive')" id="tab-archive">ARŞİV</div>
   </div>
 
+  <!-- AKTİF İŞLER GÖRÜNÜMÜ -->
   <div id="view-active">
     <div class="input-panel">
       <div class="input-row">
@@ -89,11 +107,13 @@
         <input type="text" id="firm" placeholder="MÜŞTERİ / FİRMA" style="width: 50%;">
       </div>
       <div class="input-row">
-        <input type="text" id="receipt" placeholder="FİŞ NO (Örn: 350052)">
+        <!-- Rakam Klavyesi İçin: type="number" ve inputmode="numeric" eklendi -->
+        <input type="number" inputmode="numeric" pattern="[0-9]*" id="receipt" placeholder="FİŞ NO (Örn: 350052)">
         
         <!-- Fiyat ve Kur Seçimi (Başlangıçta Gizli) -->
         <div id="priceContainer" style="display: none; width: 50%; gap: 5px;">
-          <input type="number" id="price" placeholder="FİYAT (KDV HARİÇ)" style="width: 100%;">
+          <!-- Rakam Klavyesi İçin -->
+          <input type="number" inputmode="numeric" pattern="[0-9]*" id="price" placeholder="FİYAT (KDV HARİÇ)" style="width: 100%;">
           <select id="currency" style="width: 70px; padding: 10px; background: #0f172a; color: #fff; border: 1px solid var(--border); border-radius: 4px; outline: none;">
             <option value="TRY">₺</option>
             <option value="EUR">€</option>
@@ -114,6 +134,7 @@
     <div class="grid-container" id="jobList"></div>
   </div>
 
+  <!-- ARŞİV GÖRÜNÜMÜ -->
   <div id="view-archive" style="display:none;">
     <div class="grid-container" id="folderList"></div>
     <div id="archiveModal">
@@ -125,22 +146,73 @@
     </div>
   </div>
 
+  <!-- ÖZEL ŞİFRE (PIN) MODALI -->
+  <div id="pinModalOverlay">
+    <div class="pin-box">
+      <h3>Sisteme Şifre Giriniz</h3>
+      <!-- Sadece Rakam Klavyesi Açılır -->
+      <input type="password" inputmode="numeric" pattern="[0-9]*" id="pinInput" placeholder="****">
+      <div class="pin-buttons">
+        <button class="btn" style="background:#334155; color:#fff;" onclick="closePinModal()">İPTAL</button>
+        <button class="btn" onclick="submitPin()">ONAYLA</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
-    // --- ŞİFRE VE KİLİT SİSTEMİ ---
+    // --- ÖZEL ŞİFRE PANELİ FONKSİYONLARI ---
+    let pinSuccessCallback = null;
+
+    function showPinModal(callback) {
+      pinSuccessCallback = callback;
+      document.getElementById('pinModalOverlay').style.display = 'flex';
+      const input = document.getElementById('pinInput');
+      input.value = '';
+      // Otomatik klavye açılması için
+      setTimeout(() => input.focus(), 100);
+    }
+
+    function closePinModal() {
+      document.getElementById('pinModalOverlay').style.display = 'none';
+      pinSuccessCallback = null;
+    }
+
+    function submitPin() {
+      const pin = document.getElementById('pinInput').value;
+      if (pin === "1907") {
+        closePinModal();
+        if (pinSuccessCallback) pinSuccessCallback();
+      } else {
+        alert("Hatalı Şifre!");
+        document.getElementById('pinInput').value = '';
+        document.getElementById('pinInput').focus();
+      }
+    }
+
+    // Enter tuşuna basınca onaylama
+    document.getElementById("pinInput").addEventListener("keyup", function(event) {
+      if (event.key === "Enter") { submitPin(); }
+    });
+
+    // --- ŞİFRE VE KİLİT MANTIK SİSTEMİ ---
     let globalUnlock = false;
     let unlockedIndices = new Set();
 
-    function unlockSinglePrice(index) {
-      let pass = prompt("Bu işlemin fiyatını görmek için şifreyi giriniz:");
-      if (pass === "1907") {
+    function toggleSinglePrice(index) {
+      // Eğer tekil kilit açıksa şifre sor, doğruysa göster
+      showPinModal(() => {
         unlockedIndices.add(index);
         renderAll();
-      } else if (pass !== null) {
-        alert("Hatalı şifre!");
-      }
+      });
+    }
+
+    function lockSinglePrice(index) {
+      // Kilitle butonuna basılınca tekrar gizler
+      unlockedIndices.delete(index);
+      renderAll();
     }
 
     function toggleAllPrices() {
@@ -151,12 +223,9 @@
         document.getElementById('priceContainer').style.display = "none";
         renderAll();
       } else {
-        let pass = prompt("Tüm fiyatları ve ekleme alanını görmek için şifreyi giriniz:");
-        if (pass === "1907") {
+        showPinModal(() => {
           forceUnlockAll();
-        } else if (pass !== null) {
-          alert("Hatalı şifre!");
-        }
+        });
       }
     }
 
@@ -166,6 +235,7 @@
       document.getElementById('priceContainer').style.display = "flex";
       renderAll();
     }
+
 
     // --- SAAT VE KUR ---
     function updateClock() {
@@ -178,6 +248,7 @@
       .then(res => res.json())
       .then(data => { document.getElementById('euro-rate').innerText = "€1 = " + data.rates.TRY.toFixed(2) + " ₺"; })
       .catch(() => { document.getElementById('euro-rate').innerText = "Kur Alınamadı"; });
+
 
     // --- FİREBASE BAĞLANTISI ---
     const firebaseConfig = {
@@ -215,6 +286,7 @@
       else renderFolders();
     }
 
+    // --- AKTİF İŞLER RENDER ---
     function renderActive() {
       const list = document.getElementById('jobList');
       list.innerHTML = '';
@@ -233,10 +305,12 @@
         const fTime = (hist.finished || '-').slice(-5);
 
         let displayPrice = "";
-        if (globalUnlock || unlockedIndices.has(index)) {
+        if (globalUnlock) {
           displayPrice = job.price || 'Belirtilmemiş';
+        } else if (unlockedIndices.has(index)) {
+          displayPrice = `${job.price || 'Belirtilmemiş'} <span onclick="lockSinglePrice(${index})" style="cursor:pointer; margin-left:8px; font-size:1.1rem;" title="Tekrar Gizle">🔓</span>`;
         } else {
-          displayPrice = `<span onclick="unlockSinglePrice(${index})" style="cursor:pointer; background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem; border:1px solid #334155; font-weight:bold;">🔒 Fiyatı Gör</span>`;
+          displayPrice = `<span onclick="toggleSinglePrice(${index})" style="cursor:pointer; background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem; border:1px solid #334155; font-weight:bold;">🔒 Fiyatı Gör</span>`;
         }
 
         list.innerHTML += `
@@ -269,6 +343,7 @@
       });
     }
 
+    // --- ARŞİV KLASÖRLERİ RENDER ---
     let archiveFirms = {};
     function renderFolders() {
       const list = document.getElementById('folderList');
@@ -310,10 +385,14 @@
           const fTime = hist.finished || '-';
           
           let displayPrice = "";
-          if (globalUnlock || unlockedIndices.has(job.originalIndex)) {
+          let actualIndex = job.originalIndex;
+          
+          if (globalUnlock) {
             displayPrice = job.price || 'Belirtilmemiş';
+          } else if (unlockedIndices.has(actualIndex)) {
+             displayPrice = `${job.price || 'Belirtilmemiş'} <span onclick="lockSinglePrice(${actualIndex})" style="cursor:pointer; margin-left:8px; font-size:1.1rem;" title="Tekrar Gizle">🔓</span>`;
           } else {
-            displayPrice = `<span onclick="unlockSinglePrice(${job.originalIndex})" style="cursor:pointer; background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem; border:1px solid #334155; font-weight:bold;">🔒 Fiyatı Gör</span>`;
+            displayPrice = `<span onclick="toggleSinglePrice(${actualIndex})" style="cursor:pointer; background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem; border:1px solid #334155; font-weight:bold;">🔒 Fiyatı Gör</span>`;
           }
 
           list.innerHTML += `
@@ -330,10 +409,10 @@
                 </div>
               </div>
               <div>
-                <button class="btn" style="background:var(--toks-yellow); color:var(--toks-navy); padding:8px; font-size:0.75rem; margin-bottom:5px;" onclick="generatePDF(${job.originalIndex})">📄 PDF İNDİR</button>
+                <button class="btn" style="background:var(--toks-yellow); color:var(--toks-navy); padding:8px; font-size:0.75rem; margin-bottom:5px;" onclick="generatePDF(${actualIndex})">📄 PDF İNDİR</button>
                 <div style="display:flex; gap:5px;">
-                  <button class="s-btn" style="background:var(--border); color:#fff; padding:6px;" onclick="updateStatus(${job.originalIndex}, 0)">GERİ AL</button>
-                  <button class="s-btn" style="background:var(--red); color:#fff; padding:6px;" onclick="deleteJob(${job.originalIndex})">SİL</button>
+                  <button class="s-btn" style="background:var(--border); color:#fff; padding:6px;" onclick="updateStatus(${actualIndex}, 0)">GERİ AL</button>
+                  <button class="s-btn" style="background:var(--red); color:#fff; padding:6px;" onclick="deleteJob(${actualIndex})">SİL</button>
                 </div>
               </div>
             </div>
@@ -355,7 +434,6 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      // 1. Sol Sütun (Arda Aytar Bilgileri)
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.setTextColor(40, 40, 40);
@@ -368,12 +446,10 @@
       doc.text("Kocaeli: +90 262 270 70 70", 15, 31);
       doc.text("Izmir: +90 232 420 86 57", 15, 36);
 
-      // Sol Ayırıcı Çizgi
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.5);
       doc.line(65, 16, 65, 38);
 
-      // 2. Orta Sütun (TOKS Logosu)
       doc.setFont("helvetica", "bold");
       doc.setFontSize(32);
       doc.setTextColor(10, 29, 80);
@@ -384,10 +460,8 @@
       doc.setTextColor(100, 100, 100);
       doc.text("Treyler Servis | Karoser (Kasa) Imalati", 105, 35, { align: "center" });
 
-      // Sağ Ayırıcı Çizgi
       doc.line(145, 16, 145, 38);
 
-      // 3. Sağ Sütun (branda.com Logosu)
       doc.setFont("helvetica", "bold");
       doc.setFontSize(22);
       doc.setTextColor(230, 0, 0); 
@@ -398,12 +472,10 @@
       doc.setTextColor(100, 100, 100);
       doc.text("Treyler Brandasi | Logo Yazimi", 195, 35, { align: "right" });
 
-      // Alt Çizgi
       doc.setDrawColor(255, 204, 0); 
       doc.setLineWidth(1.5);
       doc.line(15, 45, 195, 45);
 
-      // --- RESMİ İÇERİK ---
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.setTextColor(255, 0, 85);
@@ -415,7 +487,6 @@
       doc.text(`Merhaba ${job.firm || ''} firmasi, islemde olan`, 15, 65);
       doc.text(`${job.plate || ''} plakali araciniz icin asagida yapilan islem ve ucret bilgisi yer almaktadir.`, 15, 72);
 
-      // İşlem Kutusu
       doc.setDrawColor(200, 200, 200);
       doc.setFillColor(245, 247, 250);
       doc.roundedRect(15, 85, 180, 65, 3, 3, 'FD');
@@ -430,7 +501,6 @@
       doc.setTextColor(0, 0, 0);
       doc.text(`Yapilan Islem: ${job.task || ''}`, 23, 109);
       
-      // Standart PDF fontu ₺ ve € sembollerini bozduğu için otomatik harfe çevrilir (TL/EUR)
       let pdfPrice = (job.price || 'Belirtilmemis').replace('₺', 'TL').replace('€', 'EUR');
       doc.text(`Toplam Tutar: ${pdfPrice}`, 23, 119);
       
@@ -443,6 +513,7 @@
       doc.save(`${safeFirm}_${safePlate}.pdf`);
     }
 
+    // --- VERİTABANI İŞLEMLERİ ---
     function addJob() {
       const plate = document.getElementById('plate').value.trim().toUpperCase();
       const firm = document.getElementById('firm').value.trim().toUpperCase() || "BİLİNMEYEN FİRMA";
@@ -476,15 +547,16 @@
 
     function editJob(index) {
       if(!globalUnlock) {
-        let pass = prompt("Düzenleme yapmak için şifreyi giriniz:");
-        if(pass === "1907") {
+        showPinModal(() => {
           forceUnlockAll();
-        } else {
-          alert("Hatalı şifre!");
-          return;
-        }
+          executeEditJob(index);
+        });
+      } else {
+        executeEditJob(index);
       }
+    }
 
+    function executeEditJob(index) {
       const job = jobs[index];
       document.getElementById('plate').value = job.plate || '';
       document.getElementById('firm').value = job.firm || '';
