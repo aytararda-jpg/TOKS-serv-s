@@ -8,7 +8,6 @@
   <meta name="apple-mobile-web-app-title" content="TOKS SERVİS">
   <title>TOKS // SERVİS SİSTEMİ</title>
   
-  <!-- PDF ve Grafik Kütüphaneleri -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -49,7 +48,7 @@
     .plate { font-size: 1.1rem; font-weight: bold; color: var(--toks-yellow); margin-bottom: 2px; }
     .firm { color: #94a3b8; font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .task { color: #fff; line-height: 1.2; margin-bottom: 6px; font-size: 0.85rem; }
-    .price-tag { font-size: 0.8rem; color: var(--green); font-weight: bold; margin-bottom: 6px; display:flex; align-items:center; }
+    .price-tag { font-size: 0.8rem; color: var(--green); font-weight: bold; margin-bottom: 6px; display:flex; align-items:center; flex-wrap: wrap; }
     
     .timeline { background: #02070d; border-radius: 4px; padding: 6px; margin-bottom: 8px; font-size: 0.6rem; color: #94a3b8; border: 1px solid #1e293b; }
     .timeline div { display: flex; justify-content: space-between; }
@@ -100,14 +99,12 @@
     </div>
   </header>
 
-  <!-- Sekmeler -->
   <div class="tabs">
     <div class="tab active" onclick="switchTab('active')" id="tab-active">AKTİF İŞLER</div>
     <div class="tab" onclick="switchTab('archive')" id="tab-archive">ARŞİV</div>
     <div class="tab" onclick="switchTab('budget')" id="tab-budget">BÜTÇE</div>
   </div>
 
-  <!-- AKTİF İŞLER -->
   <div id="view-active">
     <div class="input-panel">
       <div class="input-row">
@@ -125,7 +122,6 @@
         </div>
       </div>
       <input type="text" id="task" list="taskList" placeholder="YAPILACAK İŞLEMİ SEÇ VEYA YAZ">
-      <!-- YENİ İŞ KALEMLERİ EKLENDİ -->
       <datalist id="taskList">
         <option value="BRANDA YAMA">
         <option value="MERDİVEN MONTAJI">
@@ -146,7 +142,6 @@
     <div class="grid-container" id="jobList"></div>
   </div>
 
-  <!-- ARŞİV GÖRÜNÜMÜ -->
   <div id="view-archive" style="display:none;">
     <div class="grid-container" id="folderList"></div>
     <div id="archiveModal">
@@ -158,7 +153,6 @@
     </div>
   </div>
 
-  <!-- BÜTÇE GÖRÜNÜMÜ -->
   <div id="view-budget" style="display:none;">
     <div class="budget-card">
       <div class="budget-title">FİRMA CARİ DAĞILIMI (ARŞİVLENEN İŞLER)</div>
@@ -181,7 +175,6 @@
     </div>
   </div>
 
-  <!-- ÖZEL ŞİFRE (PIN) MODALI -->
   <div id="pinModalOverlay">
     <div class="pin-box">
       <h3>Sisteme Şifre Giriniz</h3>
@@ -301,9 +294,7 @@
         showPinModal(() => {
           forceUnlockAll();
           switchTabInternal(tab);
-        }, () => {
-          // İptal edilirse önceki sekmede kal
-        });
+        }, () => {});
         return;
       }
       switchTabInternal(tab);
@@ -327,6 +318,7 @@
       else if(currentTab === 'budget') renderBudget();
     }
 
+    // --- AKTİF İŞLER ---
     function renderActive() {
       const list = document.getElementById('jobList');
       list.innerHTML = '';
@@ -335,9 +327,16 @@
         let c0 = job.status === 0 ? 'active-0' : ''; let c1 = job.status === 1 ? 'active-1' : ''; let c2 = job.status === 2 ? 'active-2' : '';
         let borderColor = job.status === 0 ? 'var(--red)' : (job.status === 1 ? 'var(--toks-yellow)' : 'var(--blue)');
         const hist = job.history || {};
+        
+        // Eğer Euro işi ve kur sabitlenmişse kur bilgisini yazdır
+        let rateText = (job.euroRateAtFinish && (job.price || '').includes('€')) 
+          ? `<span style="font-size:0.65rem; color:#94a3b8; margin-left:6px; font-weight:normal;">(Kur: ${parseFloat(job.euroRateAtFinish).toFixed(2)} ₺)</span>` 
+          : '';
+
         let displayPrice = (globalUnlock || unlockedIndices.has(index)) ? 
-          `${job.price || 'Belirtilmemiş'} <span onclick="lockSinglePrice(${index})" style="cursor:pointer; margin-left:8px;" title="Gizle">🔓</span>` : 
+          `${job.price || 'Belirtilmemiş'}${rateText} <span onclick="lockSinglePrice(${index})" style="cursor:pointer; margin-left:8px;" title="Gizle">🔓</span>` : 
           `<span onclick="toggleSinglePrice(${index})" style="cursor:pointer; background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem;">🔒 Fiyatı Gör</span>`;
+        
         list.innerHTML += `
           <div class="job-card" style="border-top: 3px solid ${borderColor};">
             <div>
@@ -368,6 +367,7 @@
       });
     }
 
+    // --- ARŞİV KLASÖRLERİ ---
     let archiveFirms = {};
     function renderFolders() {
       const list = document.getElementById('folderList'); list.innerHTML = ''; archiveFirms = {};
@@ -396,9 +396,15 @@
       if(archiveFirms[firmName]) {
         archiveFirms[firmName].forEach(job => {
           let actIdx = job.originalIndex;
+          
+          let rateText = (job.euroRateAtFinish && (job.price || '').includes('€')) 
+            ? `<span style="font-size:0.65rem; color:#94a3b8; margin-left:6px; font-weight:normal;">(Kur: ${parseFloat(job.euroRateAtFinish).toFixed(2)} ₺)</span>` 
+            : '';
+
           let displayPrice = (globalUnlock || unlockedIndices.has(actIdx)) ? 
-            `${job.price || 'Belirtilmemiş'} <span onclick="lockSinglePrice(${actIdx})" style="cursor:pointer; margin-left:8px;">🔓</span>` : 
+            `${job.price || 'Belirtilmemiş'}${rateText} <span onclick="lockSinglePrice(${actIdx})" style="cursor:pointer; margin-left:8px;">🔓</span>` : 
             `<span onclick="toggleSinglePrice(${actIdx})" style="background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem;">🔒 Fiyatı Gör</span>`;
+          
           list.innerHTML += `
             <div class="job-card" style="border-top: 3px solid var(--green);">
               <div>
@@ -431,7 +437,11 @@
         if(job && job.status === 3) { 
           let priceStr = job.price || "";
           let amount = parseFloat(priceStr) || 0;
-          if(priceStr.includes('€') || priceStr.includes('EUR')) { amount = amount * currentEuroRate; } 
+          
+          if(priceStr.includes('€') || priceStr.includes('EUR')) { 
+             let lockedRate = job.euroRateAtFinish ? job.euroRateAtFinish : currentEuroRate;
+             amount = amount * lockedRate; 
+          } 
           
           let firm = job.firm || "BİLİNMEYEN FİRMA";
           companyTotals[firm] = (companyTotals[firm] || 0) + amount;
@@ -488,7 +498,7 @@
     }
 
 
-    // --- DÜZENLEME (Geçmişi Korumalı) VE KAYIT SİSTEMİ ---
+    // --- DÜZENLEME VE KAYIT SİSTEMİ ---
     function executeEditJob(index) {
       switchTabInternal('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -559,13 +569,24 @@
       }
     }
 
+    // Durum Değişikliğinde Kuru Sabitleme
     function updateStatus(index, newStatus) {
       jobs[index].status = newStatus;
       const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
       if(!jobs[index].history) jobs[index].history = { waiting: '-', inProgress: '-', finished: '-' };
+      
       if(newStatus === 0) jobs[index].history.waiting = currentTime;
       if(newStatus === 1) jobs[index].history.inProgress = currentTime;
-      if(newStatus === 2) jobs[index].history.finished = currentTime;
+      
+      if(newStatus === 2) {
+        jobs[index].history.finished = currentTime;
+        jobs[index].euroRateAtFinish = currentEuroRate; 
+      }
+      
+      if(newStatus === 3 && !jobs[index].euroRateAtFinish) {
+        jobs[index].euroRateAtFinish = currentEuroRate; 
+      }
+
       db.set(jobs); closeModal();
     }
     function deleteJob(index) { if(confirm("Bu kaydı silmek istediğine emin misin?")) { jobs.splice(index, 1); db.set(jobs); closeModal(); } }
