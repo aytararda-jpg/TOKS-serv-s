@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="TOKS SERVİS">
   <title>TOKS // SERVİS SİSTEMİ</title>
   
+  <!-- PDF ve Grafik Kütüphaneleri -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -51,7 +52,7 @@
     .price-tag { font-size: 0.8rem; color: var(--green); font-weight: bold; margin-bottom: 6px; display:flex; align-items:center; flex-wrap: wrap; }
     
     .timeline { background: #02070d; border-radius: 4px; padding: 6px; margin-bottom: 8px; font-size: 0.6rem; color: #94a3b8; border: 1px solid #1e293b; }
-    .timeline div { display: flex; justify-content: space-between; }
+    .timeline div { display: flex; justify-content: space-between; margin-bottom: 2px; }
     .timeline span { color: var(--toks-yellow); }
 
     .status-grid { display: flex; gap: 3px; margin-top: auto; }
@@ -105,6 +106,7 @@
     <div class="tab" onclick="switchTab('budget')" id="tab-budget">BÜTÇE</div>
   </div>
 
+  <!-- AKTİF İŞLER -->
   <div id="view-active">
     <div class="input-panel">
       <div class="input-row">
@@ -142,6 +144,7 @@
     <div class="grid-container" id="jobList"></div>
   </div>
 
+  <!-- ARŞİV GÖRÜNÜMÜ -->
   <div id="view-archive" style="display:none;">
     <div class="grid-container" id="folderList"></div>
     <div id="archiveModal">
@@ -153,6 +156,7 @@
     </div>
   </div>
 
+  <!-- BÜTÇE GÖRÜNÜMÜ -->
   <div id="view-budget" style="display:none;">
     <div class="budget-card">
       <div class="budget-title">FİRMA CARİ DAĞILIMI (ARŞİVLENEN İŞLER)</div>
@@ -175,6 +179,7 @@
     </div>
   </div>
 
+  <!-- ÖZEL ŞİFRE (PIN) MODALI -->
   <div id="pinModalOverlay">
     <div class="pin-box">
       <h3>Sisteme Şifre Giriniz</h3>
@@ -196,7 +201,7 @@
     let editingIndex = -1; 
     let pieChartInstance = null;
     let barChartInstance = null;
-    let currentOpenFirm = null; // Arşivdeki açık klasörü takip eder
+    let currentOpenFirm = null;
 
     // --- PIN SİSTEMİ ---
     let pinSuccessCallback = null;
@@ -313,7 +318,6 @@
       renderAll();
     }
 
-    // Modalın da kendini yenileyebilmesi için currentOpenFirm kontrolü eklendi
     function renderAll() {
       if(currentTab === 'active') renderActive();
       else if(currentTab === 'archive') {
@@ -331,7 +335,11 @@
         if(!job || job.status === 3) return;
         let c0 = job.status === 0 ? 'active-0' : ''; let c1 = job.status === 1 ? 'active-1' : ''; let c2 = job.status === 2 ? 'active-2' : '';
         let borderColor = job.status === 0 ? 'var(--red)' : (job.status === 1 ? 'var(--toks-yellow)' : 'var(--blue)');
+        
         const hist = job.history || {};
+        const wTime = hist.waiting || '-';
+        const iTime = hist.inProgress || '-';
+        const fTime = hist.finished || '-';
         
         let rateText = "";
         if ((job.price || '').includes('€') || (job.price || '').includes('EUR')) {
@@ -350,10 +358,12 @@
               <div class="firm">${job.firm || ''}</div>
               <div class="task">${job.task || ''}</div>
               <div class="price-tag">Tutar: ${displayPrice}</div>
+              
+              <!-- Tam Tarih Çizelgesi -->
               <div class="timeline">
-                <div><span>Bekliyor:</span> ${(hist.waiting || '-').slice(-5)}</div>
-                <div><span>İşlemde:</span> ${(hist.inProgress || '-').slice(-5)}</div>
-                <div><span>Bitti:</span> ${(hist.finished || '-').slice(-5)}</div>
+                <div><span>Giriş:</span> ${wTime}</div>
+                <div><span>İşlem:</span> ${iTime}</div>
+                <div><span>Çıkış:</span> ${fTime}</div>
               </div>
             </div>
             <div>
@@ -395,15 +405,21 @@
     }
 
     function openModal(firmName) {
-      currentOpenFirm = firmName; // Açık olan klasörü hafızaya al
+      currentOpenFirm = firmName;
       document.getElementById('folderList').style.display = 'none';
       document.getElementById('archiveModal').style.display = 'block';
       document.getElementById('modalTitle').innerText = "🗂️ " + firmName;
       const list = document.getElementById('modalJobs'); list.innerHTML = '';
+      
       if(archiveFirms[firmName]) {
         archiveFirms[firmName].forEach(job => {
           let actIdx = job.originalIndex;
           
+          const hist = job.history || {};
+          const wTime = hist.waiting || '-';
+          const iTime = hist.inProgress || '-';
+          const fTime = hist.finished || '-';
+
           let rateText = "";
           if ((job.price || '').includes('€') || (job.price || '').includes('EUR')) {
              let r = job.euroRateAtFinish ? job.euroRateAtFinish : currentEuroRate;
@@ -420,6 +436,13 @@
                 <div class="plate">${job.plate || ''} <span style="font-size:0.7rem; color:var(--toks-yellow);">(Fiş: ${job.receipt || '-'})</span></div>
                 <div class="task">${job.task || ''}</div>
                 <div class="price-tag">Tutar: ${displayPrice}</div>
+                
+                <!-- Arşiv İçi Tarih Çizelgesi Eklendi -->
+                <div class="timeline">
+                  <div><span>Giriş:</span> ${wTime}</div>
+                  <div><span>İşlem:</span> ${iTime}</div>
+                  <div><span>Çıkış:</span> ${fTime}</div>
+                </div>
               </div>
               <div>
                 <button class="btn" style="background:var(--toks-yellow); color:var(--toks-navy); padding:8px; font-size:0.75rem; margin-bottom:5px;" onclick="generatePDF(${actIdx})">📄 PDF İNDİR</button>
@@ -434,14 +457,13 @@
         });
       }
     }
-    
     function closeModal() { 
-      currentOpenFirm = null; // Klasör kapandığında hafızayı temizle
+      currentOpenFirm = null;
       document.getElementById('archiveModal').style.display = 'none'; 
       document.getElementById('folderList').style.display = 'grid'; 
     }
 
-    // --- BÜTÇE İSTATİSTİKLERİ (Kur Korumalı) ---
+    // --- BÜTÇE İSTATİSTİKLERİ ---
     function renderBudget() {
       let companyTotals = {};
       let monthTotals = {};
