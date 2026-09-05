@@ -196,6 +196,7 @@
     let editingIndex = -1; 
     let pieChartInstance = null;
     let barChartInstance = null;
+    let currentOpenFirm = null; // Arşivdeki açık klasörü takip eder
 
     // --- PIN SİSTEMİ ---
     let pinSuccessCallback = null;
@@ -220,8 +221,8 @@
     function submitPin() {
       const pin = document.getElementById('pinInput').value.trim();
       if (pin === "1907") {
-        if (pinSuccessCallback) pinSuccessCallback();
         document.getElementById('pinModalOverlay').style.display = 'none';
+        if (pinSuccessCallback) pinSuccessCallback();
       } else {
         alert("Hatalı Şifre!");
         document.getElementById('pinInput').value = '';
@@ -312,9 +313,13 @@
       renderAll();
     }
 
+    // Modalın da kendini yenileyebilmesi için currentOpenFirm kontrolü eklendi
     function renderAll() {
       if(currentTab === 'active') renderActive();
-      else if(currentTab === 'archive') renderFolders();
+      else if(currentTab === 'archive') {
+        renderFolders();
+        if(currentOpenFirm) openModal(currentOpenFirm);
+      }
       else if(currentTab === 'budget') renderBudget();
     }
 
@@ -328,10 +333,11 @@
         let borderColor = job.status === 0 ? 'var(--red)' : (job.status === 1 ? 'var(--toks-yellow)' : 'var(--blue)');
         const hist = job.history || {};
         
-        // Eğer Euro işi ve kur sabitlenmişse kur bilgisini yazdır
-        let rateText = (job.euroRateAtFinish && (job.price || '').includes('€')) 
-          ? `<span style="font-size:0.65rem; color:#94a3b8; margin-left:6px; font-weight:normal;">(Kur: ${parseFloat(job.euroRateAtFinish).toFixed(2)} ₺)</span>` 
-          : '';
+        let rateText = "";
+        if ((job.price || '').includes('€') || (job.price || '').includes('EUR')) {
+           let r = job.euroRateAtFinish ? job.euroRateAtFinish : currentEuroRate;
+           rateText = `<span style="font-size:0.65rem; color:#94a3b8; margin-left:6px; font-weight:normal;">(Kur: ${parseFloat(r).toFixed(2)} ₺)</span>`;
+        }
 
         let displayPrice = (globalUnlock || unlockedIndices.has(index)) ? 
           `${job.price || 'Belirtilmemiş'}${rateText} <span onclick="lockSinglePrice(${index})" style="cursor:pointer; margin-left:8px;" title="Gizle">🔓</span>` : 
@@ -389,6 +395,7 @@
     }
 
     function openModal(firmName) {
+      currentOpenFirm = firmName; // Açık olan klasörü hafızaya al
       document.getElementById('folderList').style.display = 'none';
       document.getElementById('archiveModal').style.display = 'block';
       document.getElementById('modalTitle').innerText = "🗂️ " + firmName;
@@ -397,9 +404,11 @@
         archiveFirms[firmName].forEach(job => {
           let actIdx = job.originalIndex;
           
-          let rateText = (job.euroRateAtFinish && (job.price || '').includes('€')) 
-            ? `<span style="font-size:0.65rem; color:#94a3b8; margin-left:6px; font-weight:normal;">(Kur: ${parseFloat(job.euroRateAtFinish).toFixed(2)} ₺)</span>` 
-            : '';
+          let rateText = "";
+          if ((job.price || '').includes('€') || (job.price || '').includes('EUR')) {
+             let r = job.euroRateAtFinish ? job.euroRateAtFinish : currentEuroRate;
+             rateText = `<span style="font-size:0.65rem; color:#94a3b8; margin-left:6px; font-weight:normal;">(Kur: ${parseFloat(r).toFixed(2)} ₺)</span>`;
+          }
 
           let displayPrice = (globalUnlock || unlockedIndices.has(actIdx)) ? 
             `${job.price || 'Belirtilmemiş'}${rateText} <span onclick="lockSinglePrice(${actIdx})" style="cursor:pointer; margin-left:8px;">🔓</span>` : 
@@ -425,9 +434,14 @@
         });
       }
     }
-    function closeModal() { document.getElementById('archiveModal').style.display = 'none'; document.getElementById('folderList').style.display = 'grid'; }
+    
+    function closeModal() { 
+      currentOpenFirm = null; // Klasör kapandığında hafızayı temizle
+      document.getElementById('archiveModal').style.display = 'none'; 
+      document.getElementById('folderList').style.display = 'grid'; 
+    }
 
-    // --- BÜTÇE İSTATİSTİKLERİ ---
+    // --- BÜTÇE İSTATİSTİKLERİ (Kur Korumalı) ---
     function renderBudget() {
       let companyTotals = {};
       let monthTotals = {};
@@ -496,7 +510,6 @@
         options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }, x: { ticks: { color: '#cbd5e1' }, grid: { display: false } } }, maintainAspectRatio: false }
       });
     }
-
 
     // --- DÜZENLEME VE KAYIT SİSTEMİ ---
     function executeEditJob(index) {
@@ -569,7 +582,6 @@
       }
     }
 
-    // Durum Değişikliğinde Kuru Sabitleme
     function updateStatus(index, newStatus) {
       jobs[index].status = newStatus;
       const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
