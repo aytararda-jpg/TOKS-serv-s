@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="TOKS SERVİS">
   <title>TOKS // SERVİS SİSTEMİ</title>
   
+  <!-- PDF ve Grafik Kütüphaneleri -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -15,7 +16,7 @@
     :root { 
       --bg: #06090e; --card-bg: rgba(10, 20, 30, 0.85); --border: #334155; 
       --toks-navy: #0A1D3A; --toks-yellow: #FFCC00; 
-      --red: #ff0055; --blue: #00e5ff; --green: #00ff66;
+      --red: #ff0055; --blue: #00e5ff; --green: #00ff66; --orange: #f97316;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, "SF Mono", monospace; }
     body { background-color: var(--bg); color: #fff; padding: 15px; min-height: 100vh; padding-top: 85px; padding-bottom: 40px;}
@@ -53,13 +54,15 @@
     .timeline { background: #02070d; border-radius: 4px; padding: 6px; margin-bottom: 8px; font-size: 0.6rem; color: #94a3b8; border: 1px solid #1e293b; }
     .timeline div { display: flex; justify-content: space-between; margin-bottom: 2px; }
     .timeline span { color: var(--toks-yellow); }
+    .labor-time { border-top: 1px solid #1e293b; margin-top: 4px; padding-top: 4px; }
 
     .status-grid { display: flex; gap: 3px; margin-top: auto; }
-    .s-btn { flex: 1; padding: 6px 0; font-size: 0.6rem; font-weight: bold; cursor: pointer; border: 1px solid var(--border); border-radius: 4px; background: #0f172a; color: #94a3b8; text-align: center; }
+    .s-btn { flex: 1; padding: 6px 0; font-size: 0.55rem; font-weight: bold; cursor: pointer; border: 1px solid var(--border); border-radius: 4px; background: #0f172a; color: #94a3b8; text-align: center; }
     .s-btn.active-0 { background: var(--red); color: #fff; border-color: var(--red); }
     .s-btn.active-1 { background: var(--toks-yellow); color: var(--toks-navy); border-color: var(--toks-yellow); }
     .s-btn.active-2 { background: var(--blue); color: #000; border-color: var(--blue); }
-    .s-btn-archive { background: var(--green); color: var(--toks-navy); border-color: var(--green); }
+    .s-btn.active-3 { background: var(--green); color: var(--toks-navy); border-color: var(--green); }
+    .s-btn.active-4 { background: var(--orange); color: #000; border-color: var(--orange); } /* Yeni MOLA Rengi */
     
     .folder { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 15px 10px; text-align: center; cursor: pointer; border-bottom: 3px solid var(--toks-navy); }
     .folder-icon { font-size: 2rem; margin-bottom: 5px; }
@@ -175,6 +178,7 @@
     </div>
   </div>
 
+  <!-- ÖZEL ŞİFRE (PIN) MODALI -->
   <div id="pinModalOverlay">
     <div class="pin-box">
       <h3>Sisteme Şifre Giriniz</h3>
@@ -234,7 +238,6 @@
       if (event.key === "Enter") { submitPin(); }
     });
 
-    // --- KİLİT MANTIK ---
     function toggleSinglePrice(index) {
       showPinModal(() => { unlockedIndices.add(index); renderAll(); }, null);
     }
@@ -322,14 +325,39 @@
       else if(currentTab === 'budget') renderBudget();
     }
 
+    // --- İŞÇİLİK SÜRESİ HESAPLAMA MANTIĞI ---
+    function getLaborString(job) {
+      let totalMs = job.laborTimeMs || 0;
+      // Eğer şu an işlemdeyse, o anki saati de ekleyerek canlı göster
+      if (job.status === 1 && job.lastStartTimeMs) {
+        totalMs += (Date.now() - job.lastStartTimeMs);
+      }
+      if (totalMs === 0) return "-";
+      
+      let totalMins = Math.floor(totalMs / 60000);
+      let hours = Math.floor(totalMins / 60);
+      let mins = totalMins % 60;
+      
+      if (hours > 0) return `${hours} Saat ${mins} Dk`;
+      return `${mins} Dk`;
+    }
+
     // --- AKTİF İŞLER ---
     function renderActive() {
       const list = document.getElementById('jobList');
       list.innerHTML = '';
       jobs.forEach((job, index) => {
         if(!job || job.status === 3) return;
-        let c0 = job.status === 0 ? 'active-0' : ''; let c1 = job.status === 1 ? 'active-1' : ''; let c2 = job.status === 2 ? 'active-2' : '';
-        let borderColor = job.status === 0 ? 'var(--red)' : (job.status === 1 ? 'var(--toks-yellow)' : 'var(--blue)');
+        let c0 = job.status === 0 ? 'active-0' : ''; 
+        let c1 = job.status === 1 ? 'active-1' : ''; 
+        let c2 = job.status === 2 ? 'active-2' : '';
+        let c4 = job.status === 4 ? 'active-4' : ''; // MOLA Statusu
+
+        let borderColor = '#334155';
+        if(job.status === 0) borderColor = 'var(--red)';
+        if(job.status === 1) borderColor = 'var(--toks-yellow)';
+        if(job.status === 2) borderColor = 'var(--blue)';
+        if(job.status === 4) borderColor = 'var(--orange)';
         
         const hist = job.history || {};
         const wTime = hist.waiting || '-';
@@ -358,12 +386,14 @@
                 <div><span>Giriş:</span> ${wTime}</div>
                 <div><span>İşlem:</span> ${iTime}</div>
                 <div><span>Çıkış:</span> ${fTime}</div>
+                <div class="labor-time"><span>⏳ Toplam İşçilik:</span> <span style="color:#fff; font-weight:bold;">${getLaborString(job)}</span></div>
               </div>
             </div>
             <div>
               <div class="status-grid" style="margin-bottom: 4px;">
                 <button class="s-btn ${c0}" onclick="updateStatus(${index}, 0)">BEKLE</button>
                 <button class="s-btn ${c1}" onclick="updateStatus(${index}, 1)">İŞLEM</button>
+                <button class="s-btn ${c4}" onclick="updateStatus(${index}, 4)">MOLA</button>
                 <button class="s-btn ${c2}" onclick="updateStatus(${index}, 2)">BİTTİ</button>
                 <button class="s-btn s-btn-archive" onclick="updateStatus(${index}, 3)">ARŞİV</button>
               </div>
@@ -435,6 +465,7 @@
                   <div><span>Giriş:</span> ${wTime}</div>
                   <div><span>İşlem:</span> ${iTime}</div>
                   <div><span>Çıkış:</span> ${fTime}</div>
+                  <div class="labor-time"><span>⏳ Toplam İşçilik:</span> <span style="color:#fff; font-weight:bold;">${getLaborString(job)}</span></div>
                 </div>
               </div>
               <div>
@@ -591,42 +622,64 @@
         cancelEdit(); 
       } else {
         const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-        jobs.push({ plate, firm, receipt, task, price: finalPrice, status: 0, history: { waiting: currentTime, inProgress: '-', finished: '-' } });
+        jobs.push({ 
+          plate, firm, receipt, task, price: finalPrice, status: 0, 
+          laborTimeMs: 0, lastStartTimeMs: null, 
+          history: { waiting: currentTime, inProgress: '-', finished: '-' } 
+        });
         db.set(jobs);
         cancelEdit();
       }
     }
 
-    // MANTIK DÜZELTİLMESİ: Geri Al tuşunda "Giriş" saati bozulmaz, "Çıkış" sıfırlanır.
+    // İŞÇİLİK HESAPLAMALI DURUM DEĞİŞİKLİĞİ (Gelişmiş Kronometre Mantığı)
     function updateStatus(index, newStatus) {
-      jobs[index].status = newStatus;
+      let job = jobs[index];
+      let oldStatus = job.status;
+      if (oldStatus === newStatus) return; // Aynı butona basarsa hiçbir şey yapma
+
       const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-      
-      if(!jobs[index].history) {
-        jobs[index].history = { waiting: currentTime, inProgress: '-', finished: '-' };
+      const currentMs = Date.now();
+
+      if (!job.history) job.history = { waiting: currentTime, inProgress: '-', finished: '-' };
+      if (job.laborTimeMs === undefined) job.laborTimeMs = 0;
+
+      // KRONOMETRE: Eğer "İŞLEM" (1) durumundan ÇIKIYORSAK (Mola, Bitti, Bekle vs.), aradaki süreyi kumbaraya at.
+      if (oldStatus === 1 && job.lastStartTimeMs) {
+        job.laborTimeMs += (currentMs - job.lastStartTimeMs);
+        job.lastStartTimeMs = null; // Çift saymaması için sıfırla
       }
 
-      if(newStatus === 0) {
-         // Bekleye/Geri alındıysa çıkış saatini sıfırla ki yeniden bitti dediğinde yeni tarih atılsın. Giriş (waiting) saati ASLA DEĞİŞMEZ.
-         jobs[index].history.finished = '-';
+      // KRONOMETRE: Eğer "İŞLEM" (1) durumuna GİRİYORSAK, kronometreyi başlat.
+      if (newStatus === 1) {
+        job.lastStartTimeMs = currentMs;
+        // Eğer ilk kez işleme alınıyorsa, işleme alınma saatini yazdır
+        if (job.history.inProgress === '-') {
+          job.history.inProgress = currentTime;
+        }
       }
-      
-      if(newStatus === 1) {
-        jobs[index].history.inProgress = currentTime;
-        jobs[index].history.finished = '-';
+
+      job.status = newStatus;
+
+      // Özel Buton Aksiyonları
+      if(newStatus === 0 || newStatus === 4) {
+        // Geri Al/Bekle VEYA Mola durumlarına geçerse, "Çıkış Saati" silinir, giriş tarihi BOZULMAZ.
+        job.history.finished = '-';
       }
       
       if(newStatus === 2) {
-        jobs[index].history.finished = currentTime;
-        jobs[index].euroRateAtFinish = currentEuroRate; 
+        // BİTTİ dendiği saniye kuru sabitle ve çıkış saatini mühürle
+        job.history.finished = currentTime;
+        job.euroRateAtFinish = currentEuroRate; 
       }
       
-      if(newStatus === 3 && !jobs[index].euroRateAtFinish) {
-        jobs[index].euroRateAtFinish = currentEuroRate; 
+      if(newStatus === 3 && !job.euroRateAtFinish) {
+        job.euroRateAtFinish = currentEuroRate; 
       }
 
       db.set(jobs); closeModal();
     }
+    
     function deleteJob(index) { if(confirm("Bu kaydı silmek istediğine emin misin?")) { jobs.splice(index, 1); db.set(jobs); closeModal(); } }
 
     // --- PDF OLUŞTURUCU ---
@@ -646,11 +699,21 @@
       doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(255, 0, 85); doc.text("SERI / FIS NO: " + (job.receipt || '-'), 195, 55, { align: "right" });
       doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
       doc.text(`Merhaba ${job.firm || ''} firmasi, islemde olan`, 15, 65); doc.text(`${job.plate || ''} plakali araciniz icin asagida yapilan islem ve ucret bilgisi yer almaktadir.`, 15, 72);
-      doc.setDrawColor(200, 200, 200); doc.setFillColor(245, 247, 250); doc.roundedRect(15, 85, 180, 65, 3, 3, 'FD');
+      doc.setDrawColor(200, 200, 200); doc.setFillColor(245, 247, 250); doc.roundedRect(15, 85, 180, 75, 3, 3, 'FD');
       doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(10, 29, 58); doc.text("SERVIS VE ISLEM DETAYLARI", 23, 97);
       doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(0, 0, 0); doc.text(`Yapilan Islem: ${job.task || ''}`, 23, 109);
-      let pdfPrice = (job.price || 'Belirtilmemis').replace('₺', 'TL').replace('€', 'EUR'); doc.text(`Toplam Tutar: ${pdfPrice}`, 23, 119);
-      const hist = job.history || {}; doc.text(`Arac Giris Saati: ${hist.waiting || '-'}`, 23, 129); doc.text(`Islem Cikis Saati: ${hist.finished || '-'}`, 23, 139);
+      
+      let pdfPrice = (job.price || 'Belirtilmemis').replace('₺', 'TL').replace('€', 'EUR'); 
+      doc.text(`Toplam Tutar: ${pdfPrice}`, 23, 119);
+      
+      const hist = job.history || {}; 
+      doc.text(`Arac Giris Saati: ${hist.waiting || '-'}`, 23, 129); 
+      doc.text(`Islem Cikis Saati: ${hist.finished || '-'}`, 23, 139);
+      
+      // Toplam İşçiliği PDF'e aktarma (Türkçe karakter düzeltmesiyle)
+      let isisilicSuresi = getLaborString(job).replace('Saat', 'Saat').replace('Dk', 'Dk');
+      doc.text(`Toplam Iscilik: ${isisilicSuresi}`, 23, 149);
+
       const safeFirm = (job.firm || 'FIRMA').replace(/[^a-zA-Z0-9]/g, '_'); const safePlate = (job.plate || 'PLAKA').replace(/[^a-zA-Z0-9]/g, '');
       doc.save(`${safeFirm}_${safePlate}.pdf`);
     }
