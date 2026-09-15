@@ -7,10 +7,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TOKS SERVİS">
   <title>TOKS // SERVİS SİSTEMİ</title>
-  
-  <!-- PDF ve Grafik Kütüphaneleri -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- PDF ve Grafik Kütüphaneleri (sürüm sabitlenmiş + SRI) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+          integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk"
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+          integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4"
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <style>
     :root { 
@@ -78,18 +82,36 @@
     .budget-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 6px 0; border-bottom: 1px solid #1e293b; }
     .budget-row:last-child { border: none; }
     .budget-total { font-size: 1.2rem; color: var(--green); font-weight: bold; text-align: right; margin-top: 10px; }
+    .budget-warn { color: var(--orange); font-size: 0.7rem; margin-top: 8px; }
     .chart-container { position: relative; height: 250px; width: 100%; }
 
-    /* Şifre Paneli Özel Tasarımı */
-    #pinModalOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; }
-    .pin-box { background: var(--toks-navy); padding: 25px; border-radius: 8px; border: 2px solid var(--toks-yellow); width: 85%; max-width: 320px; text-align: center; }
-    .pin-box h3 { color: var(--toks-yellow); margin-bottom: 15px; font-size: 1.1rem; }
-    .pin-box input { width: 100%; text-align: center; font-size: 1.8rem; letter-spacing: 8px; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 2px solid var(--border); background: #06090e; color: #fff; -webkit-text-security: disc; }
-    .pin-box input:focus { border-color: var(--toks-yellow); }
-    .pin-buttons { display: flex; gap: 10px; }
+    /* GİRİŞ EKRANI */
+    #loginOverlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 9999; justify-content: center; align-items: center; }
+    .login-box { background: var(--toks-navy); padding: 25px; border-radius: 8px; border: 2px solid var(--toks-yellow); width: 85%; max-width: 340px; text-align: center; }
+    .login-box h3 { color: var(--toks-yellow); margin-bottom: 15px; font-size: 1.1rem; }
+    .login-box input { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 6px; border: 2px solid var(--border); background: #06090e; color: #fff; font-size: 0.95rem; text-transform: none; }
+    .login-box input:focus { border-color: var(--toks-yellow); }
+    .login-error { color: var(--red); font-size: 0.75rem; min-height: 16px; margin-bottom: 8px; }
+    .login-boot { color: #94a3b8; font-size: 0.85rem; padding: 10px 0; }
   </style>
 </head>
 <body>
+
+  <!-- GİRİŞ EKRANI -->
+  <div id="loginOverlay">
+    <div class="login-box">
+      <h3>TOKS SERVİS</h3>
+      <div id="bootMsg" class="login-boot">Yükleniyor...</div>
+      <div id="loginForm" style="display:none;">
+        <input type="email" id="loginEmail" placeholder="E-posta" autocomplete="username" autocapitalize="off" spellcheck="false">
+        <input type="password" id="loginPass" placeholder="Şifre" autocomplete="current-password">
+        <div class="login-error" id="loginError"></div>
+        <button class="btn" id="loginBtn">GİRİŞ YAP</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" style="display:none;">
 
   <header>
     <div style="display:flex; align-items:center;">
@@ -98,20 +120,20 @@
     <div class="info-widget">
       <div id="clock">Yükleniyor...</div>
       <strong id="euro-rate">€1 = Bekleniyor...</strong>
-      <button class="lock-btn" id="lockBtn" onclick="toggleAllPrices()">🔒 Tümünü Aç</button>
+      <button class="lock-btn" id="logoutBtn">ÇIKIŞ</button>
     </div>
   </header>
 
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('active')" id="tab-active">AKTİF İŞLER</div>
-    <div class="tab" onclick="switchTab('archive')" id="tab-archive">ARŞİV</div>
-    <div class="tab" onclick="switchTab('budget')" id="tab-budget">BÜTÇE</div>
+    <div class="tab active" id="tab-active">AKTİF İŞLER</div>
+    <div class="tab" id="tab-archive">ARŞİV</div>
+    <div class="tab" id="tab-budget">BÜTÇE</div>
   </div>
 
   <div id="view-active">
     <div class="input-panel">
       <div class="input-row">
-        <input type="text" id="plate" placeholder="PLAKA (Örn: 35 TOKS 01)" oninput="this.value = this.value.toUpperCase()">
+        <input type="text" id="plate" placeholder="PLAKA (Örn: 35 TOKS 01)">
         <input type="text" id="firm" placeholder="MÜŞTERİ / FİRMA" style="width: 50%;">
       </div>
       <div class="input-row">
@@ -137,8 +159,8 @@
         <option value="TÜM BRANDA DEĞİŞİM">
       </datalist>
       <div style="display:flex; gap:10px;">
-        <button class="btn" id="saveBtn" onclick="saveJob()">SİSTEME KAYDET</button>
-        <button class="btn" id="cancelBtn" onclick="cancelEdit()" style="display:none; background:var(--red); color:#fff; width:30%;">İPTAL</button>
+        <button class="btn" id="saveBtn">SİSTEME KAYDET</button>
+        <button class="btn" id="cancelBtn" style="display:none; background:var(--red); color:#fff; width:30%;">İPTAL</button>
       </div>
     </div>
     
@@ -150,7 +172,7 @@
     <div id="archiveModal">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div class="modal-title" id="modalTitle" style="margin:0;"></div>
-        <button onclick="closeModal()" style="background:var(--border); color:#fff; border:none; padding:8px 15px; border-radius:4px; font-weight:bold; cursor:pointer;">← Geri Dön</button>
+        <button id="modalBackBtn" style="background:var(--border); color:#fff; border:none; padding:8px 15px; border-radius:4px; font-weight:bold; cursor:pointer;">← Geri Dön</button>
       </div>
       <div class="grid-container" id="modalJobs"></div>
     </div>
@@ -161,6 +183,7 @@
       <div class="budget-title">FİRMA CARİ DAĞILIMI (ARŞİVLENEN İŞLER)</div>
       <div id="firmBalances"></div>
       <div class="budget-total" id="grandTotal">TOPLAM: 0 ₺</div>
+      <div class="budget-warn" id="budgetWarn"></div>
     </div>
 
     <div class="budget-card">
@@ -178,101 +201,89 @@
     </div>
   </div>
 
-  <!-- ÖZEL ŞİFRE (PIN) MODALI -->
-  <div id="pinModalOverlay">
-    <div class="pin-box">
-      <h3>Sisteme Şifre Giriniz</h3>
-      <input type="tel" id="pinInput" placeholder="****" style="-webkit-text-security: disc;">
-      <div class="pin-buttons">
-        <button class="btn" style="background:#334155; color:#fff;" onclick="closePinModal()">İPTAL</button>
-        <button class="btn" onclick="submitPin()">ONAYLA</button>
-      </div>
-    </div>
-  </div>
+  </div><!-- /#app -->
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
-    let globalUnlock = false;
-    let unlockedIndices = new Set();
-    let currentEuroRate = 1;
-    let editingIndex = -1; 
+    // --- DURUM ---
+    let jobs = [];
+    let currentTab = 'active';
+    let currentEuroRate = null;   // Kur bilinmiyorsa null kalır, ASLA 1 varsayılmaz
+    let editingId = null;
     let pieChartInstance = null;
     let barChartInstance = null;
     let currentOpenFirm = null;
+    let archiveFirms = {};
+    let db = null;
+    let dbBound = false;
 
-    // --- PIN SİSTEMİ ---
-    let pinSuccessCallback = null;
-    let pinCancelCallback = null;
-
-    function showPinModal(onSuccess, onCancel) {
-      pinSuccessCallback = onSuccess;
-      pinCancelCallback = onCancel;
-      document.getElementById('pinModalOverlay').style.display = 'flex';
-      const input = document.getElementById('pinInput');
-      input.value = '';
-      setTimeout(() => input.focus(), 100);
+    // --- HTML KAÇIŞLAMA ---
+    // Veritabanından gelen her değer ekrana basılmadan önce buradan geçer.
+    function esc(s) {
+      return String(s === null || s === undefined ? '' : s)
+        .replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
     }
 
-    function closePinModal() {
-      document.getElementById('pinModalOverlay').style.display = 'none';
-      if (pinCancelCallback) pinCancelCallback();
-      pinSuccessCallback = null;
-      pinCancelCallback = null;
+    function isEuroPrice(job) {
+      // Yeni kayitlarda para birimi ayri alanda tutulur; eskilerde metinden okunur.
+      if (job && (job.currency === 'EUR' || job.currency === 'TRY')) return job.currency === 'EUR';
+      const p = String((job && job.price) || '');
+      return p.includes('€') || p.includes('EUR');
     }
 
-    function submitPin() {
-      const pin = document.getElementById('pinInput').value.trim();
-      if (pin === "2705") {
-        document.getElementById('pinModalOverlay').style.display = 'none';
-        if (pinSuccessCallback) pinSuccessCallback();
-      } else {
-        alert("Hatalı Şifre!");
-        document.getElementById('pinInput').value = '';
-        document.getElementById('pinInput').focus();
-      }
+    function jobCurrency(job) {
+      if (job && (job.currency === 'EUR' || job.currency === 'TRY')) return job.currency;
+      return isEuroPrice(job) ? 'EUR' : 'TRY';
     }
 
-    document.getElementById("pinInput").addEventListener("keyup", function(event) {
-      if (event.key === "Enter") { submitPin(); }
-    });
-
-    function toggleSinglePrice(index) {
-      showPinModal(() => { unlockedIndices.add(index); renderAll(); }, null);
-    }
-    function lockSinglePrice(index) {
-      unlockedIndices.delete(index); renderAll();
-    }
-    function toggleAllPrices() {
-      if (globalUnlock) {
-        globalUnlock = false;
-        unlockedIndices.clear();
-        document.getElementById('lockBtn').innerText = "🔒 Tümünü Aç";
-        renderAll();
-      } else {
-        showPinModal(() => { forceUnlockAll(); }, null);
-      }
-    }
-    function forceUnlockAll() {
-      globalUnlock = true;
-      document.getElementById('lockBtn').innerText = "🔓 Tümünü Gizle";
-      renderAll();
+    // KDV HARIC taban fiyat. Kaynak dogrudan saklanan basePrice'tir; boylece
+    // duzenle-kaydet dongusu tutari kaydirmaz. basePrice'i olmayan eski
+    // kayitlarda KDV dahil tutardan turetilir (tam sayiya DEGIL, 2 haneye).
+    function jobBasePrice(job) {
+      if (job && typeof job.basePrice === 'number' && isFinite(job.basePrice)) return job.basePrice;
+      const p = parseFloat(String((job && job.price) || ''));
+      if (!isFinite(p)) return '';
+      return Number((p / 1.2).toFixed(2));
     }
 
-    // --- SAAT VE KUR ---
-    function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
+    // --- SAAT ---
+    function updateClock() {
+      document.getElementById('clock').innerText = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
     updateClock(); setInterval(updateClock, 1000);
+
+    // --- KUR ---
+    const RATE_KEY = 'toks_eur_try_rate';
+
+    function showRate(rate, stale) {
+      currentEuroRate = rate;
+      document.getElementById('euro-rate').innerText = "€1 = " + rate.toFixed(2) + " ₺" + (stale ? " (son bilinen)" : "");
+    }
+
+    try {
+      const cached = JSON.parse(localStorage.getItem(RATE_KEY) || 'null');
+      if (cached && typeof cached.rate === 'number' && cached.rate > 0) showRate(cached.rate, true);
+    } catch (e) { /* localStorage kapalı olabilir */ }
 
     fetch('https://open.er-api.com/v6/latest/EUR')
       .then(res => res.json())
-      .then(data => { 
-        currentEuroRate = data.rates.TRY;
-        document.getElementById('euro-rate').innerText = "€1 = " + currentEuroRate.toFixed(2) + " ₺"; 
+      .then(data => {
+        const rate = data && data.rates && data.rates.TRY;
+        if (typeof rate !== 'number' || !(rate > 0)) throw new Error('invalid rate payload');
+        showRate(rate, false);
+        try { localStorage.setItem(RATE_KEY, JSON.stringify({ rate: rate, ts: Date.now() })); } catch (e) {}
+        if (dbBound) renderAll();
       })
-      .catch(() => { document.getElementById('euro-rate').innerText = "Kur Alınamadı"; });
+      .catch(() => {
+        if (currentEuroRate === null) document.getElementById('euro-rate').innerText = "Kur Alınamadı";
+      });
 
     // --- FİREBASE ---
+    // Not: Web API anahtarının istemcide görünmesi normaldir; erişim kontrolü
+    // Realtime Database güvenlik kurallarıyla sağlanır.
     const firebaseConfig = {
       apiKey: "AIzaSyBdJ2_Vs53h9dJq_KJciNPWix6OFvOZR5Y",
       authDomain: "toks-servis.firebaseapp.com",
@@ -283,28 +294,57 @@
       appId: "1:686093119969:web:9c48f375479f65822062a0"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref('toks_jobs');
 
-    let jobs = [];
-    let currentTab = 'active';
+    // --- KİMLİK DOĞRULAMA ---
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .catch(() => { /* özel sekmede kalıcılık kısıtlı olabilir */ });
 
-    db.on('value', (snapshot) => {
-      jobs = snapshot.val() || [];
-      renderAll();
-    });
+    firebase.auth().onAuthStateChanged(user => {
+      document.getElementById('bootMsg').style.display = 'none';
 
-    function switchTab(tab) {
-      if (tab === 'budget' && !globalUnlock) {
-        showPinModal(() => {
-          forceUnlockAll();
-          switchTabInternal(tab);
-        }, () => {});
+      if (!user) {
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('loginOverlay').style.display = 'flex';
+        document.getElementById('app').style.display = 'none';
+        jobs = [];
         return;
       }
-      switchTabInternal(tab);
+
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+
+      if (dbBound) return;
+      dbBound = true;
+      db = firebase.database().ref('toks_jobs');
+      db.on('value', snapshot => {
+        const raw = snapshot.val() || {};
+        // Hem eski dizi anahtarlarını ("0".."61") hem yeni push anahtarlarını okur.
+        jobs = Object.entries(raw)
+          .filter(entry => entry[1])
+          .map(entry => Object.assign({}, entry[1], { id: entry[0] }));
+        renderAll();
+      }, () => {
+        alert("Veritabanına erişilemedi. Yetkiniz olmayabilir; yöneticiye bildirin.");
+      });
+    });
+
+    function doLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const pass  = document.getElementById('loginPass').value;
+      const errEl = document.getElementById('loginError');
+      errEl.textContent = '';
+      if (!email || !pass) { errEl.textContent = 'E-posta ve şifre gerekli.'; return; }
+      // Hata kodu gösterilmez: hangi e-postanın kayıtlı olduğunu sızdırmamak için.
+      firebase.auth().signInWithEmailAndPassword(email, pass)
+        .catch(() => { errEl.textContent = 'Giriş başarısız. Bilgileri kontrol edin.'; });
     }
 
-    function switchTabInternal(tab) {
+    function doLogout() {
+      firebase.auth().signOut().then(() => { window.location.reload(); });
+    }
+
+    // --- SEKMELER ---
+    function switchTab(tab) {
       currentTab = tab;
       document.getElementById('tab-active').classList.toggle('active', tab === 'active');
       document.getElementById('tab-archive').classList.toggle('active', tab === 'archive');
@@ -317,12 +357,17 @@
     }
 
     function renderAll() {
-      if(currentTab === 'active') renderActive();
-      else if(currentTab === 'archive') {
+      if (currentTab === 'active') renderActive();
+      else if (currentTab === 'archive') {
         renderFolders();
-        if(currentOpenFirm) openModal(currentOpenFirm);
+        if (currentOpenFirm) openModal(currentOpenFirm);
       }
-      else if(currentTab === 'budget') renderBudget();
+      else if (currentTab === 'budget') renderBudget();
+    }
+
+    function findJob(id) {
+      for (let i = 0; i < jobs.length; i++) if (jobs[i].id === id) return jobs[i];
+      return null;
     }
 
     // --- İŞÇİLİK SÜRESİ HESAPLAMA MANTIĞI ---
@@ -333,99 +378,105 @@
         totalMs += (Date.now() - job.lastStartTimeMs);
       }
       if (totalMs === 0) return "-";
-      
+
       let totalMins = Math.floor(totalMs / 60000);
       let hours = Math.floor(totalMins / 60);
       let mins = totalMins % 60;
-      
+
       if (hours > 0) return `${hours} Saat ${mins} Dk`;
       return `${mins} Dk`;
+    }
+
+    function rateTextFor(job) {
+      if (!isEuroPrice(job)) return "";
+      const r = job.euroRateAtFinish ? job.euroRateAtFinish : currentEuroRate;
+      const shown = (typeof r === 'number' && r > 0) ? parseFloat(r).toFixed(2) + " ₺" : "-";
+      return `<span style="font-size:0.65rem; color:#94a3b8; margin-left:6px; font-weight:normal;">(Kur: ${esc(shown)})</span>`;
     }
 
     // --- AKTİF İŞLER ---
     function renderActive() {
       const list = document.getElementById('jobList');
-      list.innerHTML = '';
-      jobs.forEach((job, index) => {
-        if(!job || job.status === 3) return;
-        let c0 = job.status === 0 ? 'active-0' : ''; 
-        let c1 = job.status === 1 ? 'active-1' : ''; 
+      const parts = [];
+
+      jobs.forEach(job => {
+        if (!job || job.status === 3) return;
+        let c0 = job.status === 0 ? 'active-0' : '';
+        let c1 = job.status === 1 ? 'active-1' : '';
         let c2 = job.status === 2 ? 'active-2' : '';
         let c4 = job.status === 4 ? 'active-4' : ''; // MOLA Statusu
 
         let borderColor = '#334155';
-        if(job.status === 0) borderColor = 'var(--red)';
-        if(job.status === 1) borderColor = 'var(--toks-yellow)';
-        if(job.status === 2) borderColor = 'var(--blue)';
-        if(job.status === 4) borderColor = 'var(--orange)';
-        
+        if (job.status === 0) borderColor = 'var(--red)';
+        if (job.status === 1) borderColor = 'var(--toks-yellow)';
+        if (job.status === 2) borderColor = 'var(--blue)';
+        if (job.status === 4) borderColor = 'var(--orange)';
+
         const hist = job.history || {};
         const wTime = hist.waiting || '-';
         const iTime = hist.inProgress || '-';
         const fTime = hist.finished || '-';
-        
-        let rateText = "";
-        if ((job.price || '').includes('€') || (job.price || '').includes('EUR')) {
-           let r = job.euroRateAtFinish ? job.euroRateAtFinish : currentEuroRate;
-           rateText = `<span style="font-size:0.65rem; color:#94a3b8; margin-left:6px; font-weight:normal;">(Kur: ${parseFloat(r).toFixed(2)} ₺)</span>`;
-        }
 
-        let displayPrice = (globalUnlock || unlockedIndices.has(index)) ? 
-          `${job.price || 'Belirtilmemiş'}${rateText} <span onclick="lockSinglePrice(${index})" style="cursor:pointer; margin-left:8px;" title="Gizle">🔓</span>` : 
-          `<span onclick="toggleSinglePrice(${index})" style="cursor:pointer; background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem;">🔒 Fiyatı Gör</span>`;
-        
-        list.innerHTML += `
+        const id = esc(job.id);
+
+        parts.push(`
           <div class="job-card" style="border-top: 3px solid ${borderColor};">
             <div>
-              <div class="plate">${job.plate || ''} <span style="font-size:0.7rem; color:#94a3b8;">(Fiş: ${job.receipt || '-'})</span></div>
-              <div class="firm">${job.firm || ''}</div>
-              <div class="task">${job.task || ''}</div>
-              <div class="price-tag">Tutar: ${displayPrice}</div>
-              
+              <div class="plate">${esc(job.plate || '')} <span style="font-size:0.7rem; color:#94a3b8;">(Fiş: ${esc(job.receipt || '-')})</span></div>
+              <div class="firm">${esc(job.firm || '')}</div>
+              <div class="task">${esc(job.task || '')}</div>
+              <div class="price-tag">Tutar: ${esc(job.price || 'Belirtilmemiş')}${rateTextFor(job)}</div>
+
               <div class="timeline">
-                <div><span>Giriş:</span> ${wTime}</div>
-                <div><span>İşlem:</span> ${iTime}</div>
-                <div><span>Çıkış:</span> ${fTime}</div>
-                <div class="labor-time"><span>⏳ Toplam İşçilik:</span> <span style="color:#fff; font-weight:bold;">${getLaborString(job)}</span></div>
+                <div><span>Giriş:</span> ${esc(wTime)}</div>
+                <div><span>İşlem:</span> ${esc(iTime)}</div>
+                <div><span>Çıkış:</span> ${esc(fTime)}</div>
+                <div class="labor-time"><span>⏳ Toplam İşçilik:</span> <span style="color:#fff; font-weight:bold;">${esc(getLaborString(job))}</span></div>
               </div>
             </div>
             <div>
               <div class="status-grid" style="margin-bottom: 4px;">
-                <button class="s-btn ${c0}" onclick="updateStatus(${index}, 0)">BEKLE</button>
-                <button class="s-btn ${c1}" onclick="updateStatus(${index}, 1)">İŞLEM</button>
-                <button class="s-btn ${c4}" onclick="updateStatus(${index}, 4)">MOLA</button>
-                <button class="s-btn ${c2}" onclick="updateStatus(${index}, 2)">BİTTİ</button>
-                <button class="s-btn s-btn-archive" onclick="updateStatus(${index}, 3)">ARŞİV</button>
+                <button class="s-btn ${c0}" data-act="status" data-id="${id}" data-status="0">BEKLE</button>
+                <button class="s-btn ${c1}" data-act="status" data-id="${id}" data-status="1">İŞLEM</button>
+                <button class="s-btn ${c4}" data-act="status" data-id="${id}" data-status="4">MOLA</button>
+                <button class="s-btn ${c2}" data-act="status" data-id="${id}" data-status="2">BİTTİ</button>
+                <button class="s-btn s-btn-archive" data-act="status" data-id="${id}" data-status="3">ARŞİV</button>
               </div>
               <div style="display:flex; justify-content:space-between; margin-top:4px;">
-                <button onclick="editJob(${index})" style="background:transparent; border:1px solid #cbd5e1; color:#cbd5e1; font-size:0.6rem; padding:2px 8px; border-radius:3px;">DÜZENLE</button>
-                <button onclick="deleteJob(${index})" style="background:transparent; border:1px solid var(--red); color:var(--red); font-size:0.6rem; padding:2px 8px; border-radius:3px;">SİL</button>
+                <button data-act="edit" data-id="${id}" style="background:transparent; border:1px solid #cbd5e1; color:#cbd5e1; font-size:0.6rem; padding:2px 8px; border-radius:3px;">DÜZENLE</button>
+                <button data-act="delete" data-id="${id}" style="background:transparent; border:1px solid var(--red); color:var(--red); font-size:0.6rem; padding:2px 8px; border-radius:3px;">SİL</button>
               </div>
             </div>
           </div>
-        `;
+        `);
       });
+
+      list.innerHTML = parts.join('');
     }
 
     // --- ARŞİV KLASÖRLER ---
-    let archiveFirms = {};
     function renderFolders() {
-      const list = document.getElementById('folderList'); list.innerHTML = ''; archiveFirms = {};
-      jobs.forEach((job, index) => {
-        if(job && job.status === 3) {
+      const list = document.getElementById('folderList');
+      archiveFirms = {};
+
+      jobs.forEach(job => {
+        if (job && job.status === 3) {
           let fname = job.firm || "BİLİNMEYEN FİRMA";
-          if(!archiveFirms[fname]) archiveFirms[fname] = [];
-          archiveFirms[fname].push({ ...job, originalIndex: index });
+          if (!archiveFirms[fname]) archiveFirms[fname] = [];
+          archiveFirms[fname].push(job);
         }
       });
+
+      const parts = [];
       for (const [firmName, firmJobs] of Object.entries(archiveFirms)) {
-        list.innerHTML += `
-          <div class="folder" onclick="openModal('${firmName.replace(/'/g, "\\'")}')">
-            <div class="folder-icon">🗂️</div><div class="folder-name">${firmName}</div>
+        parts.push(`
+          <div class="folder" data-firm="${esc(firmName)}">
+            <div class="folder-icon">🗂️</div><div class="folder-name">${esc(firmName)}</div>
             <div class="folder-count">${firmJobs.length} İşlem</div>
           </div>
-        `;
+        `);
       }
+      list.innerHTML = parts.join('');
     }
 
     function openModal(firmName) {
@@ -433,58 +484,52 @@
       document.getElementById('folderList').style.display = 'none';
       document.getElementById('archiveModal').style.display = 'block';
       document.getElementById('modalTitle').innerText = "🗂️ " + firmName;
-      const list = document.getElementById('modalJobs'); list.innerHTML = '';
-      
-      if(archiveFirms[firmName]) {
+
+      const list = document.getElementById('modalJobs');
+      const parts = [];
+
+      if (archiveFirms[firmName]) {
         archiveFirms[firmName].forEach(job => {
-          let actIdx = job.originalIndex;
-          
+          const id = esc(job.id);
           const hist = job.history || {};
           const wTime = hist.waiting || '-';
           const iTime = hist.inProgress || '-';
           const fTime = hist.finished || '-';
 
-          let rateText = "";
-          if ((job.price || '').includes('€') || (job.price || '').includes('EUR')) {
-             let r = job.euroRateAtFinish ? job.euroRateAtFinish : currentEuroRate;
-             rateText = `<span style="font-size:0.65rem; color:#94a3b8; margin-left:6px; font-weight:normal;">(Kur: ${parseFloat(r).toFixed(2)} ₺)</span>`;
-          }
-
-          let displayPrice = (globalUnlock || unlockedIndices.has(actIdx)) ? 
-            `${job.price || 'Belirtilmemiş'}${rateText} <span onclick="lockSinglePrice(${actIdx})" style="cursor:pointer; margin-left:8px;">🔓</span>` : 
-            `<span onclick="toggleSinglePrice(${actIdx})" style="background:#1e293b; padding:3px 8px; border-radius:4px; color:#FFCC00; font-size:0.75rem;">🔒 Fiyatı Gör</span>`;
-          
-          list.innerHTML += `
+          parts.push(`
             <div class="job-card" style="border-top: 3px solid var(--green);">
               <div>
-                <div class="plate">${job.plate || ''} <span style="font-size:0.7rem; color:var(--toks-yellow);">(Fiş: ${job.receipt || '-'})</span></div>
-                <div class="task">${job.task || ''}</div>
-                <div class="price-tag">Tutar: ${displayPrice}</div>
-                
+                <div class="plate">${esc(job.plate || '')} <span style="font-size:0.7rem; color:var(--toks-yellow);">(Fiş: ${esc(job.receipt || '-')})</span></div>
+                <div class="task">${esc(job.task || '')}</div>
+                <div class="price-tag">Tutar: ${esc(job.price || 'Belirtilmemiş')}${rateTextFor(job)}</div>
+
                 <div class="timeline">
-                  <div><span>Giriş:</span> ${wTime}</div>
-                  <div><span>İşlem:</span> ${iTime}</div>
-                  <div><span>Çıkış:</span> ${fTime}</div>
-                  <div class="labor-time"><span>⏳ Toplam İşçilik:</span> <span style="color:#fff; font-weight:bold;">${getLaborString(job)}</span></div>
+                  <div><span>Giriş:</span> ${esc(wTime)}</div>
+                  <div><span>İşlem:</span> ${esc(iTime)}</div>
+                  <div><span>Çıkış:</span> ${esc(fTime)}</div>
+                  <div class="labor-time"><span>⏳ Toplam İşçilik:</span> <span style="color:#fff; font-weight:bold;">${esc(getLaborString(job))}</span></div>
                 </div>
               </div>
               <div>
-                <button class="btn" style="background:var(--toks-yellow); color:var(--toks-navy); padding:8px; font-size:0.75rem; margin-bottom:5px;" onclick="generatePDF(${actIdx})">📄 PDF İNDİR</button>
+                <button class="btn" data-act="pdf" data-id="${id}" style="background:var(--toks-yellow); color:var(--toks-navy); padding:8px; font-size:0.75rem; margin-bottom:5px;">📄 PDF İNDİR</button>
                 <div style="display:flex; gap:5px;">
-                  <button class="s-btn" style="background:var(--border); color:#fff; padding:6px;" onclick="updateStatus(${actIdx}, 0)">GERİ AL</button>
-                  <button class="s-btn" style="background:var(--border); color:#cbd5e1; padding:6px;" onclick="editJob(${actIdx})">DÜZENLE</button>
-                  <button class="s-btn" style="background:var(--red); color:#fff; padding:6px;" onclick="deleteJob(${actIdx})">SİL</button>
+                  <button class="s-btn" data-act="status" data-id="${id}" data-status="0" style="background:var(--border); color:#fff; padding:6px;">GERİ AL</button>
+                  <button class="s-btn" data-act="edit" data-id="${id}" style="background:var(--border); color:#cbd5e1; padding:6px;">DÜZENLE</button>
+                  <button class="s-btn" data-act="delete" data-id="${id}" style="background:var(--red); color:#fff; padding:6px;">SİL</button>
                 </div>
               </div>
             </div>
-          `;
+          `);
         });
       }
+
+      list.innerHTML = parts.join('');
     }
-    function closeModal() { 
+
+    function closeModal() {
       currentOpenFirm = null;
-      document.getElementById('archiveModal').style.display = 'none'; 
-      document.getElementById('folderList').style.display = 'grid'; 
+      document.getElementById('archiveModal').style.display = 'none';
+      document.getElementById('folderList').style.display = 'grid';
     }
 
     // --- BÜTÇE İSTATİSTİKLERİ ---
@@ -492,41 +537,47 @@
       let companyTotals = {};
       let monthTotals = {};
       let grandTotal = 0;
+      let skippedNoRate = 0;
 
       jobs.forEach(job => {
-        if(job && job.status === 3) { 
+        if (job && job.status === 3) {
           let priceStr = job.price || "";
           let amount = parseFloat(priceStr) || 0;
-          
-          if(priceStr.includes('€') || priceStr.includes('EUR')) { 
-             let lockedRate = job.euroRateAtFinish ? job.euroRateAtFinish : currentEuroRate;
-             amount = amount * lockedRate; 
-          } 
-          
+
+          if (isEuroPrice(job)) {
+            let lockedRate = job.euroRateAtFinish ? job.euroRateAtFinish : currentEuroRate;
+            // Kur bilinmiyorsa kayıt toplamlara KATILMAZ (eskiden 1 TL sayılıyordu).
+            if (!(typeof lockedRate === 'number' && lockedRate > 0)) { skippedNoRate++; return; }
+            amount = amount * lockedRate;
+          }
+
           let firm = job.firm || "BİLİNMEYEN FİRMA";
           companyTotals[firm] = (companyTotals[firm] || 0) + amount;
           grandTotal += amount;
 
           let fDate = (job.history && job.history.finished !== '-') ? job.history.finished : job.time;
           if (fDate) {
-            let parts = fDate.split(' ')[0].split('.');
-            if(parts.length === 3) {
-              let monthKey = `${parts[1]}/${parts[2]}`; 
+            let parts = String(fDate).split(' ')[0].split('.');
+            if (parts.length === 3) {
+              let monthKey = `${parts[1]}/${parts[2]}`;
               monthTotals[monthKey] = (monthTotals[monthKey] || 0) + amount;
             }
           }
         }
       });
 
-      let listHTML = "";
+      const rows = [];
       for (const [firm, total] of Object.entries(companyTotals)) {
-        listHTML += `<div class="budget-row"><span>🏢 ${firm}</span><span style="color:var(--green); font-weight:bold;">${Math.round(total).toLocaleString('tr-TR')} ₺</span></div>`;
+        rows.push(`<div class="budget-row"><span>🏢 ${esc(firm)}</span><span style="color:var(--green); font-weight:bold;">${Math.round(total).toLocaleString('tr-TR')} ₺</span></div>`);
       }
-      document.getElementById('firmBalances').innerHTML = listHTML;
+      document.getElementById('firmBalances').innerHTML = rows.join('');
       document.getElementById('grandTotal').innerText = `TOPLAM: ${Math.round(grandTotal).toLocaleString('tr-TR')} ₺`;
+      document.getElementById('budgetWarn').innerText = skippedNoRate
+        ? `⚠ ${skippedNoRate} euro kaydı kur bilgisi olmadığı için toplama katılmadı.`
+        : '';
 
-      if(pieChartInstance) pieChartInstance.destroy();
-      if(barChartInstance) barChartInstance.destroy();
+      if (pieChartInstance) pieChartInstance.destroy();
+      if (barChartInstance) barChartInstance.destroy();
 
       const ctxPie = document.getElementById('pieChart').getContext('2d');
       pieChartInstance = new Chart(ctxPie, {
@@ -558,37 +609,29 @@
     }
 
     // --- DÜZENLEME VE KAYIT SİSTEMİ ---
-    function executeEditJob(index) {
-      switchTabInternal('active');
+    function editJob(id) {
+      const job = findJob(id);
+      if (!job) return;
+
+      switchTab('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      editingIndex = index;
-      const job = jobs[index];
-      
+      editingId = id;
+
       document.getElementById('plate').value = job.plate || '';
       document.getElementById('firm').value = job.firm || '';
       document.getElementById('receipt').value = job.receipt || '';
-      
-      if(job.price) {
-        document.getElementById('currency').value = job.price.includes('€') ? 'EUR' : 'TRY';
-        try { document.getElementById('price').value = Math.round(parseFloat(job.price.split(' ')[0]) / 1.2); } catch(e) {}
-      }
+
+      document.getElementById('currency').value = jobCurrency(job);
+      document.getElementById('price').value = job.price ? jobBasePrice(job) : '';
       document.getElementById('task').value = job.task || '';
-      
+
       document.getElementById('saveBtn').innerText = "SİSTEMİ GÜNCELLE";
       document.getElementById('saveBtn').style.background = "var(--blue)";
       document.getElementById('cancelBtn').style.display = "block";
     }
 
-    function editJob(index) {
-      if(!globalUnlock) {
-        showPinModal(() => { forceUnlockAll(); executeEditJob(index); }, null);
-      } else {
-        executeEditJob(index);
-      }
-    }
-
     function cancelEdit() {
-      editingIndex = -1;
+      editingId = null;
       document.getElementById('plate').value = ''; document.getElementById('firm').value = '';
       document.getElementById('receipt').value = ''; document.getElementById('price').value = '';
       document.getElementById('task').value = '';
@@ -598,93 +641,113 @@
     }
 
     function saveJob() {
+      if (!db) return;
+
       const plate = document.getElementById('plate').value.trim().toUpperCase();
       const firm = document.getElementById('firm').value.trim().toUpperCase() || "BİLİNMEYEN FİRMA";
       const receipt = document.getElementById('receipt').value.trim() || "-";
       const task = document.getElementById('task').value.trim().toUpperCase();
       const rawPrice = document.getElementById('price').value;
       const curr = document.getElementById('currency').value;
-      
-      if(!plate || !task) { alert("Plaka ve İşlem boş bırakılamaz!"); return; }
-      
+
+      if (!plate || !task) { alert("Plaka ve İşlem boş bırakılamaz!"); return; }
+
       let finalPrice = "";
-      if (rawPrice && !isNaN(rawPrice)) {
-        finalPrice = curr === 'EUR' ? (parseFloat(rawPrice) * 1.2).toFixed(2) + " € (KDV Dahil)" : (parseFloat(rawPrice) * 1.2).toFixed(2) + " ₺ (KDV Dahil)";
+      let basePrice = null;
+      if (rawPrice !== '' && !isNaN(rawPrice)) {
+        basePrice = parseFloat(rawPrice);
+        const withVat = (basePrice * 1.2).toFixed(2);
+        finalPrice = withVat + (curr === 'EUR' ? " € (KDV Dahil)" : " ₺ (KDV Dahil)");
       }
 
-      if (editingIndex > -1) {
-        jobs[editingIndex].plate = plate;
-        jobs[editingIndex].firm = firm;
-        jobs[editingIndex].receipt = receipt;
-        jobs[editingIndex].task = task;
-        jobs[editingIndex].price = finalPrice;
-        db.set(jobs);
-        cancelEdit(); 
+      if (editingId) {
+        // Sadece bu kaydın ilgili alanları yazılır; diğer kayıtlara dokunulmaz.
+        // basePrice/currency de yazilir: bir sonraki duzenlemede tutar yeniden
+        // turetilmez, boylece KDV yuvarlamasi tutari kaydirmaz.
+        db.child(editingId).update({ plate, firm, receipt, task, price: finalPrice, basePrice, currency: curr })
+          .catch(() => alert("Kayıt güncellenemedi."));
+        cancelEdit();
       } else {
         const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-        jobs.push({ 
-          plate, firm, receipt, task, price: finalPrice, status: 0, 
-          laborTimeMs: 0, lastStartTimeMs: null, 
-          history: { waiting: currentTime, inProgress: '-', finished: '-' } 
-        });
-        db.set(jobs);
+        db.push({
+          plate, firm, receipt, task, price: finalPrice, basePrice, currency: curr, status: 0,
+          laborTimeMs: 0, lastStartTimeMs: null,
+          history: { waiting: currentTime, inProgress: '-', finished: '-' }
+        }).catch(() => alert("Kayıt eklenemedi."));
         cancelEdit();
       }
     }
 
     // İŞÇİLİK HESAPLAMALI DURUM DEĞİŞİKLİĞİ (Gelişmiş Kronometre Mantığı)
-    function updateStatus(index, newStatus) {
-      let job = jobs[index];
-      let oldStatus = job.status;
+    function updateStatus(id, newStatus) {
+      if (!db) return;
+      const job = findJob(id);
+      if (!job) return;
+
+      const oldStatus = job.status;
       if (oldStatus === newStatus) return; // Aynı butona basarsa hiçbir şey yapma
 
       const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
       const currentMs = Date.now();
 
-      if (!job.history) job.history = { waiting: currentTime, inProgress: '-', finished: '-' };
-      if (job.laborTimeMs === undefined) job.laborTimeMs = 0;
+      let history = job.history ? Object.assign({}, job.history) : { waiting: currentTime, inProgress: '-', finished: '-' };
+      let laborTimeMs = (job.laborTimeMs === undefined) ? 0 : job.laborTimeMs;
+      let lastStartTimeMs = job.lastStartTimeMs || null;
 
       // KRONOMETRE: Eğer "İŞLEM" (1) durumundan ÇIKIYORSAK (Mola, Bitti, Bekle vs.), aradaki süreyi kumbaraya at.
-      if (oldStatus === 1 && job.lastStartTimeMs) {
-        job.laborTimeMs += (currentMs - job.lastStartTimeMs);
-        job.lastStartTimeMs = null; // Çift saymaması için sıfırla
+      if (oldStatus === 1 && lastStartTimeMs) {
+        laborTimeMs += (currentMs - lastStartTimeMs);
+        lastStartTimeMs = null; // Çift saymaması için sıfırla
       }
 
       // KRONOMETRE: Eğer "İŞLEM" (1) durumuna GİRİYORSAK, kronometreyi başlat.
       if (newStatus === 1) {
-        job.lastStartTimeMs = currentMs;
+        lastStartTimeMs = currentMs;
         // Eğer ilk kez işleme alınıyorsa, işleme alınma saatini yazdır
-        if (job.history.inProgress === '-') {
-          job.history.inProgress = currentTime;
+        if (history.inProgress === '-') history.inProgress = currentTime;
+      }
+
+      // Özel Buton Aksiyonları
+      if (newStatus === 0 || newStatus === 4) {
+        // Geri Al/Bekle VEYA Mola durumlarına geçerse, "Çıkış Saati" silinir, giriş tarihi BOZULMAZ.
+        history.finished = '-';
+      }
+      if (newStatus === 2) {
+        // BİTTİ dendiği saniye çıkış saatini mühürle
+        history.finished = currentTime;
+      }
+
+      const payload = {
+        status: newStatus,
+        laborTimeMs: laborTimeMs,
+        lastStartTimeMs: lastStartTimeMs,
+        history: history
+      };
+
+      // Kur mühürleme: yalnızca euro fiyatlı işlerde ve GEÇERLİ bir kur varken.
+      const needsRate = (newStatus === 2) || (newStatus === 3 && !job.euroRateAtFinish);
+      if (needsRate && isEuroPrice(job)) {
+        if (typeof currentEuroRate === 'number' && currentEuroRate > 0) {
+          payload.euroRateAtFinish = currentEuroRate;
+        } else {
+          alert("Kur bilgisi alınamadığı için tutar sabitlenemedi.\nİşlem kaydedilecek, ancak kur sonradan güncellenmeli.");
         }
       }
 
-      job.status = newStatus;
-
-      // Özel Buton Aksiyonları
-      if(newStatus === 0 || newStatus === 4) {
-        // Geri Al/Bekle VEYA Mola durumlarına geçerse, "Çıkış Saati" silinir, giriş tarihi BOZULMAZ.
-        job.history.finished = '-';
-      }
-      
-      if(newStatus === 2) {
-        // BİTTİ dendiği saniye kuru sabitle ve çıkış saatini mühürle
-        job.history.finished = currentTime;
-        job.euroRateAtFinish = currentEuroRate; 
-      }
-      
-      if(newStatus === 3 && !job.euroRateAtFinish) {
-        job.euroRateAtFinish = currentEuroRate; 
-      }
-
-      db.set(jobs); closeModal();
+      db.child(id).update(payload).catch(() => alert("Durum güncellenemedi."));
+      closeModal();
     }
-    
-    function deleteJob(index) { if(confirm("Bu kaydı silmek istediğine emin misin?")) { jobs.splice(index, 1); db.set(jobs); closeModal(); } }
+
+    function deleteJob(id) {
+      if (!db) return;
+      if (!confirm("Bu kaydı silmek istediğine emin misin?")) return;
+      db.child(id).remove().catch(() => alert("Kayıt silinemedi."));
+      closeModal();
+    }
 
     // --- PDF OLUŞTURUCU ---
-    function generatePDF(index) {
-      const job = jobs[index]; if(!job) return;
+    function generatePDF(id) {
+      const job = findJob(id); if (!job) return;
       const { jsPDF } = window.jspdf; const doc = new jsPDF();
       doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(40, 40, 40); doc.text("ARDA AYTAR", 15, 20);
       doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(10, 29, 80);
@@ -702,14 +765,14 @@
       doc.setDrawColor(200, 200, 200); doc.setFillColor(245, 247, 250); doc.roundedRect(15, 85, 180, 75, 3, 3, 'FD');
       doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(10, 29, 58); doc.text("SERVIS VE ISLEM DETAYLARI", 23, 97);
       doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(0, 0, 0); doc.text(`Yapilan Islem: ${job.task || ''}`, 23, 109);
-      
-      let pdfPrice = (job.price || 'Belirtilmemis').replace('₺', 'TL').replace('€', 'EUR'); 
+
+      let pdfPrice = (job.price || 'Belirtilmemis').replace('₺', 'TL').replace('€', 'EUR');
       doc.text(`Toplam Tutar: ${pdfPrice}`, 23, 119);
-      
-      const hist = job.history || {}; 
-      doc.text(`Arac Giris Saati: ${hist.waiting || '-'}`, 23, 129); 
+
+      const hist = job.history || {};
+      doc.text(`Arac Giris Saati: ${hist.waiting || '-'}`, 23, 129);
       doc.text(`Islem Cikis Saati: ${hist.finished || '-'}`, 23, 139);
-      
+
       // Toplam İşçiliği PDF'e aktarma (Türkçe karakter düzeltmesiyle)
       let isisilicSuresi = getLaborString(job).replace('Saat', 'Saat').replace('Dk', 'Dk');
       doc.text(`Toplam Iscilik: ${isisilicSuresi}`, 23, 149);
@@ -717,6 +780,42 @@
       const safeFirm = (job.firm || 'FIRMA').replace(/[^a-zA-Z0-9]/g, '_'); const safePlate = (job.plate || 'PLAKA').replace(/[^a-zA-Z0-9]/g, '');
       doc.save(`${safeFirm}_${safePlate}.pdf`);
     }
+
+    // --- OLAY BAĞLAMA (satır içi onclick yerine delegasyon) ---
+    function handleJobAction(e) {
+      const el = e.target.closest('[data-act]');
+      if (!el) return;
+      const id = el.dataset.id;
+      switch (el.dataset.act) {
+        case 'status': updateStatus(id, parseInt(el.dataset.status, 10)); break;
+        case 'edit':   editJob(id); break;
+        case 'delete': deleteJob(id); break;
+        case 'pdf':    generatePDF(id); break;
+      }
+    }
+
+    document.getElementById('jobList').addEventListener('click', handleJobAction);
+    document.getElementById('modalJobs').addEventListener('click', handleJobAction);
+
+    document.getElementById('folderList').addEventListener('click', e => {
+      const el = e.target.closest('.folder');
+      if (el) openModal(el.dataset.firm);
+    });
+
+    document.getElementById('tab-active').addEventListener('click', () => switchTab('active'));
+    document.getElementById('tab-archive').addEventListener('click', () => switchTab('archive'));
+    document.getElementById('tab-budget').addEventListener('click', () => switchTab('budget'));
+
+    document.getElementById('saveBtn').addEventListener('click', saveJob);
+    document.getElementById('cancelBtn').addEventListener('click', cancelEdit);
+    document.getElementById('modalBackBtn').addEventListener('click', closeModal);
+    document.getElementById('logoutBtn').addEventListener('click', doLogout);
+
+    document.getElementById('plate').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
+
+    document.getElementById('loginBtn').addEventListener('click', doLogin);
+    document.getElementById('loginPass').addEventListener('keyup', e => { if (e.key === 'Enter') doLogin(); });
+    document.getElementById('loginEmail').addEventListener('keyup', e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); });
   </script>
 </body>
 </html>
