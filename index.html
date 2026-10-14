@@ -100,6 +100,11 @@
     .quote-actions { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
     .quote-actions button { width:auto; flex:1 1 80px; min-height:32px; font-size:0.64rem; font-weight:bold; cursor:pointer; border:1px solid var(--border); border-radius:4px; background:#0f172a; color:#fff; }
     .quote-actions button:disabled { opacity:0.45; cursor:default; }
+    .quote-status-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; margin-top:8px; }
+    .quote-status-grid .s-btn { min-height:36px; font-size:0.58rem; padding:4px 2px; }
+    .quote-status-grid .active-pending { background:var(--toks-yellow); color:var(--toks-navy); border-color:var(--toks-yellow); }
+    .quote-status-grid .active-accepted { background:var(--green); color:var(--toks-navy); border-color:var(--green); }
+    .quote-status-grid .active-rejected, .quote-status-grid .active-not_arrived { background:var(--red); color:#fff; border-color:var(--red); }
     .quote-stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:8px; margin-bottom:14px; }
     .quote-stat { background:#0f172a; border:1px solid var(--border); border-radius:6px; padding:10px; }
     .quote-stat strong { display:block; font-size:1.05rem; margin-top:5px; color:var(--toks-yellow); }
@@ -159,9 +164,9 @@
         <input type="text" id="firm" placeholder="MÜŞTERİ / FİRMA" style="width: 50%;">
       </div>
       <div class="input-row">
-        <input type="number" inputmode="numeric" pattern="[0-9]*" id="receipt" placeholder="FİŞ NO (Örn: 350052)">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="30" id="receipt" placeholder="FİŞ NO (Örn: 350052)">
         <div id="priceContainer" style="display: flex; width: 50%; gap: 5px;">
-          <input type="number" inputmode="numeric" pattern="[0-9]*" id="price" placeholder="FİYAT (KDV HARİÇ)" style="width: 100%;">
+          <input type="text" inputmode="decimal" id="price" placeholder="FİYAT (KDV HARİÇ)" style="width: 100%;">
           <select id="currency" style="width: 70px; padding: 10px; background: #0f172a; color: #fff; border: 1px solid var(--border); border-radius: 4px; outline: none;">
             <option value="TRY">₺</option>
             <option value="EUR">€</option>
@@ -196,16 +201,19 @@
         <input type="text" id="quoteFirm" maxlength="60" placeholder="MÜŞTERİ / FİRMA *">
         <input type="text" id="quotePlate" maxlength="20" placeholder="PLAKA (VARSA)">
       </div>
-      <input type="text" id="quoteContact" maxlength="100" placeholder="YETKİLİ / TELEFON (İSTEĞE BAĞLI)">
+      <div class="input-row">
+        <input type="text" id="quoteContact" maxlength="100" placeholder="YETKİLİ (İSTEĞE BAĞLI)">
+        <input type="tel" inputmode="tel" autocomplete="tel" id="quotePhone" maxlength="30" placeholder="TELEFON (İSTEĞE BAĞLI)">
+      </div>
       <label class="field-label" for="quoteTask">YAPILACAK İŞ *</label>
       <textarea id="quoteTask" maxlength="200" placeholder="TEKLİF VERİLEN İŞLERİ YAZIN"></textarea>
       <div class="input-row">
-        <input type="number" id="quotePrice" min="0.01" max="1000000000" step="0.01" inputmode="decimal" placeholder="FİYAT (KDV HARİÇ) *">
+        <input type="text" id="quotePrice" inputmode="decimal" placeholder="FİYAT (KDV HARİÇ) *">
         <select id="quoteCurrency" aria-label="Teklif para birimi"><option value="TRY">₺ TRY</option><option value="EUR">€ EUR</option></select>
       </div>
       <div id="quoteRateRow" style="display:none;">
         <label class="field-label" for="quoteRate">TEKLİF GÜNÜ EUR/TRY KURU *</label>
-        <input type="number" id="quoteRate" min="0.0001" max="1000000" step="0.0001" inputmode="decimal" placeholder="1 € KAÇ ₺?">
+        <input type="text" id="quoteRate" inputmode="decimal" placeholder="1 € KAÇ ₺?">
         <div class="form-note">Bugünün kuru önerilir; geçmiş tarihli teklifte o günkü kuru yazın. Kaydedilen kur raporda sabit kalır.</div>
       </div>
       <div class="input-row">
@@ -220,7 +228,7 @@
       </div>
     </div>
     <div class="quote-toolbar">
-      <input type="search" id="quoteSearch" placeholder="FİRMA, PLAKA VEYA İŞ ARA">
+      <input type="search" id="quoteSearch" placeholder="FİRMA, PLAKA, TELEFON VEYA İŞ ARA">
       <select id="quoteFilter" aria-label="Teklif durumu filtresi">
         <option value="all">TÜM DURUMLAR</option><option value="pending">CEVAP BEKLİYOR</option>
         <option value="accepted">ONAYLANDI</option><option value="rejected">REDDEDİLDİ</option>
@@ -299,6 +307,7 @@
     let editingQuoteId = null;
     let quotesLoaded = false;
     let quotesError = '';
+    const quoteStatusSaving = new Set();
     let pieChartInstance = null;
     let barChartInstance = null;
     let currentOpenFirm = null;
@@ -746,9 +755,19 @@
       return `${day}.${month}.${year}`;
     }
 
+    function showMoment(timestamp) {
+      const time = Number(timestamp);
+      return Number.isFinite(time) && time > 0 ? new Date(time).toLocaleString('tr-TR') : '-';
+    }
+
     function money(amount, currency) {
       return Number(amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
         (currency === 'EUR' ? ' €' : ' ₺');
+    }
+
+    function parseDecimalInput(value) {
+      const normalized = String(value || '').trim().replace(',', '.');
+      return /^\d+(?:\.\d+)?$/.test(normalized) ? Number(normalized) : NaN;
     }
 
     function quoteTotal(quote) {
@@ -780,7 +799,7 @@
 
     function resetQuoteForm() {
       editingQuoteId = null;
-      for (const id of ['quoteFirm','quotePlate','quoteContact','quoteTask','quotePrice','quoteRate','quoteFollowUp','quoteNote']) {
+      for (const id of ['quoteFirm','quotePlate','quoteContact','quotePhone','quoteTask','quotePrice','quoteRate','quoteFollowUp','quoteNote']) {
         document.getElementById(id).value = '';
       }
       document.getElementById('quoteDate').value = todayISO();
@@ -803,6 +822,7 @@
       document.getElementById('quoteFirm').value = quote.firm || '';
       document.getElementById('quotePlate').value = quote.plate || '';
       document.getElementById('quoteContact').value = quote.contact || '';
+      document.getElementById('quotePhone').value = quote.phone || '';
       document.getElementById('quoteTask').value = quote.task || '';
       document.getElementById('quotePrice').value = quote.basePrice ?? '';
       document.getElementById('quoteCurrency').value = quote.currency || 'TRY';
@@ -822,13 +842,14 @@
       const firm = document.getElementById('quoteFirm').value.trim().toUpperCase();
       const plate = document.getElementById('quotePlate').value.trim().toUpperCase();
       const contact = document.getElementById('quoteContact').value.trim().toUpperCase();
+      const phone = document.getElementById('quotePhone').value.trim();
       const task = document.getElementById('quoteTask').value.trim().toUpperCase();
       const note = document.getElementById('quoteNote').value.trim().toUpperCase();
-      const basePrice = Number(document.getElementById('quotePrice').value);
+      const basePrice = parseDecimalInput(document.getElementById('quotePrice').value);
       const currency = document.getElementById('quoteCurrency').value;
       const quoteDate = document.getElementById('quoteDate').value;
       const followUpDate = document.getElementById('quoteFollowUp').value;
-      const exchangeRateAtQuote = currency === 'EUR' ? Number(document.getElementById('quoteRate').value) : null;
+      const exchangeRateAtQuote = currency === 'EUR' ? parseDecimalInput(document.getElementById('quoteRate').value) : null;
       if (!firm || !task || !document.getElementById('quotePrice').value || !Number.isFinite(basePrice) || basePrice <= 0 || basePrice > 1000000000) {
         alert('Firma, yapılacak iş ve geçerli fiyat gerekli.'); return;
       }
@@ -838,14 +859,14 @@
       if (currency === 'EUR' && (!document.getElementById('quoteRate').value || !Number.isFinite(exchangeRateAtQuote) || exchangeRateAtQuote <= 0 || exchangeRateAtQuote > 1000000)) {
         alert('Euro teklifi için teklif günü kurunu girin.'); return;
       }
-      const fields = { firm, plate, contact, task, note, basePrice, currency, quoteDate, followUpDate, exchangeRateAtQuote, updatedAt: Date.now() };
+      const fields = { firm, plate, contact, phone, task, note, basePrice, currency, quoteDate, followUpDate, exchangeRateAtQuote, updatedAt: Date.now() };
       const button = document.getElementById('quoteSaveBtn');
       button.disabled = true;
       try {
         if (editingQuoteId) {
           const old = findQuote(editingQuoteId);
           if (!old || old.linkedJobId) throw new Error('converted');
-          const previous = { firm: old.firm || '', plate: old.plate || '', contact: old.contact || '', task: old.task || '', note: old.note || '', basePrice: old.basePrice, currency: old.currency, quoteDate: old.quoteDate, followUpDate: old.followUpDate || '', exchangeRateAtQuote: old.exchangeRateAtQuote || null, savedAt: Date.now() };
+          const previous = { firm: old.firm || '', plate: old.plate || '', contact: old.contact || '', phone: old.phone || '', task: old.task || '', note: old.note || '', basePrice: old.basePrice, currency: old.currency, quoteDate: old.quoteDate, followUpDate: old.followUpDate || '', exchangeRateAtQuote: old.exchangeRateAtQuote || null, savedAt: Date.now() };
           const revisionKey = quotesDb.child(editingQuoteId).child('revisions').push().key;
           await quotesDb.child(editingQuoteId).update({ ...fields, ['revisions/' + revisionKey]: previous });
         } else {
@@ -862,12 +883,15 @@
     async function setQuoteStatus(id, status) {
       if (!quotesDb || !Object.prototype.hasOwnProperty.call(QUOTE_STATUSES, status)) return;
       const quote = findQuote(id);
-      if (!quote || quote.linkedJobId || quote.status === status) return;
+      if (!quote || quote.linkedJobId || quote.status === status || quoteStatusSaving.has(id)) return;
+      quoteStatusSaving.add(id);
       const historyKey = quotesDb.child(id).child('statusHistory').push().key;
       try {
         await quotesDb.child(id).update({ status, statusChangedAt: Date.now(), updatedAt: Date.now(), ['statusHistory/' + historyKey]: { from: quote.status || 'pending', to: status, at: Date.now() } });
       } catch (e) {
         alert('Teklif durumu güncellenemedi.');
+      } finally {
+        quoteStatusSaving.delete(id);
       }
     }
 
@@ -948,7 +972,7 @@
       const today = todayISO();
       const selected = quotes.filter(quote =>
         (filter === 'all' || quote.status === filter) &&
-        (!search || [quote.firm, quote.plate, quote.task, quote.contact].some(value => String(value || '').toLocaleUpperCase('tr-TR').includes(search)))
+        (!search || [quote.firm, quote.plate, quote.task, quote.contact, quote.phone].some(value => String(value || '').toLocaleUpperCase('tr-TR').includes(search)))
       ).sort((a, b) => {
         const aDue = a.status === 'pending' && a.followUpDate ? a.followUpDate : '9999-12-31';
         const bDue = b.status === 'pending' && b.followUpDate ? b.followUpDate : '9999-12-31';
@@ -963,8 +987,11 @@
         const total = quoteTotal(quote);
         const isOverdue = status === 'pending' && quote.followUpDate && quote.followUpDate < today;
         const revisions = quote.revisions ? Object.values(quote.revisions) : [];
-        const options = Object.entries(QUOTE_STATUSES).map(([key, label]) => `<option value="${key}" ${key === status ? 'selected' : ''}>${label}</option>`).join('');
+        const statusTrail = quote.statusHistory ? Object.values(quote.statusHistory).sort((a,b) => Number(a.at || 0) - Number(b.at || 0)) : [];
+        const statusButtons = [['pending','CEVAP BEKLE'], ['accepted','ONAYLANDI'], ['rejected','REDDEDİLDİ'], ['not_arrived','GELMEDİ']]
+          .map(([key,label]) => `<button class="s-btn ${status === key ? 'active-' + key : ''}" data-qact="status" data-id="${id}" data-status="${key}" aria-pressed="${status === key}" ${status === key ? 'disabled' : ''}>${label}</button>`).join('');
         const previous = revisions.length ? `<details class="form-note"><summary>${revisions.length} önceki sürüm</summary>${revisions.map(rev => `<div>${esc(showDate(rev.quoteDate))}: ${esc(rev.task || '')} — ${esc(money(quoteTotal(rev) || 0, rev.currency))}</div>`).join('')}</details>` : '';
+        const statusHistory = statusTrail.length ? `<details class="form-note"><summary>Durum geçmişi (${statusTrail.length})</summary>${statusTrail.map(change => `<div>${esc(showMoment(change.at))}: ${esc(QUOTE_STATUSES[change.from] || change.from || 'CEVAP BEKLENİYOR')} → ${esc(QUOTE_STATUSES[change.to] || change.to || '-')}</div>`).join('')}</details>` : '';
         return `<div class="job-card" style="border-top:3px solid ${status === 'accepted' ? 'var(--green)' : status === 'pending' ? 'var(--toks-yellow)' : 'var(--red)'};">
           <div>
             <div class="quote-badge ${status}">${esc(QUOTE_STATUSES[status])}</div>
@@ -976,17 +1003,19 @@
             <div class="timeline">
               <div><span>Teklif:</span> ${esc(showDate(quote.quoteDate))}</div>
               <div><span>Tekrar ara:</span> <span style="color:${isOverdue ? 'var(--red)' : '#fff'};">${esc(showDate(quote.followUpDate))}${isOverdue ? ' • GECİKTİ' : ''}</span></div>
+              ${quote.statusChangedAt ? `<div><span>Son durum:</span> ${esc(showMoment(quote.statusChangedAt))}</div>` : ''}
               ${quote.contact ? `<div><span>İletişim:</span> ${esc(quote.contact)}</div>` : ''}
+              ${quote.phone ? `<div><span>Telefon:</span> <a href="tel:${esc(quote.phone)}">${esc(quote.phone)}</a></div>` : ''}
               ${quote.note ? `<div style="display:block; white-space:pre-wrap;"><span>Not:</span> ${esc(quote.note)}</div>` : ''}
             </div>
             ${previous}
+            ${statusHistory}
             ${quote.linkedJobId ? `<div class="form-note" style="color:var(--green);">İş emrine dönüştürüldü.</div>` : ''}
           </div>
           <div class="quote-actions"><button data-qact="pdf" data-id="${id}">PDF İNDİR</button></div>
           ${quote.linkedJobId ? '' : `<div>
-            <select data-quote-status="${id}" aria-label="Teklif durumu">${options}</select>
+            <div class="quote-status-grid" role="group" aria-label="Teklif durumu">${statusButtons}</div>
             <div class="quote-actions">
-              <button data-qact="status" data-id="${id}">DURUMU KAYDET</button>
               <button data-qact="edit" data-id="${id}">DÜZENLE</button>
               ${status === 'accepted' ? `<button data-qact="convert" data-id="${id}" style="border-color:var(--green); color:var(--green);">İŞE ÇEVİR</button>` : ''}
             </div>
@@ -1075,8 +1104,9 @@
 
       let finalPrice = "";
       let basePrice = null;
-      if (rawPrice !== '' && !isNaN(rawPrice)) {
-        basePrice = parseFloat(rawPrice);
+      if (rawPrice.trim() !== '') {
+        basePrice = parseDecimalInput(rawPrice);
+        if (!Number.isFinite(basePrice) || basePrice < 0) { alert('Geçerli bir fiyat girin.'); return; }
         const withVat = (basePrice * 1.2).toFixed(2);
         finalPrice = withVat + (curr === 'EUR' ? " € (KDV Dahil)" : " ₺ (KDV Dahil)");
       }
@@ -1243,9 +1273,8 @@
       else if (button.dataset.qact === 'convert') convertQuote(id);
       else if (button.dataset.qact === 'pdf') generateQuotePDF(id);
       else if (button.dataset.qact === 'status') {
-        const select = [...document.querySelectorAll('#quoteList select[data-quote-status]')]
-          .find(item => item.dataset.quoteStatus === id);
-        if (select) setQuoteStatus(id, select.value);
+        button.disabled = true;
+        setQuoteStatus(id, button.dataset.status).finally(() => { button.disabled = false; });
       }
     });
 
