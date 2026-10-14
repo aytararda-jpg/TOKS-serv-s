@@ -32,7 +32,7 @@
         "currency": { ".validate": "newData.isString() && (newData.val() === 'TRY' || newData.val() === 'EUR')" },
         "exchangeRateAtQuote": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 1000000" },
         "quoteDate": { ".validate": "newData.isString() && newData.val().length === 10" },
-        "followUpDate": { ".validate": "newData.isString() && newData.val().length === 10" },
+        "followUpDate": { ".validate": "newData.isString() && (newData.val().length === 0 || newData.val().length === 10)" },
         "status": { ".validate": "newData.isString() && (newData.val() === 'pending' || newData.val() === 'accepted' || newData.val() === 'rejected' || newData.val() === 'not_arrived')" },
         "linkedJobId": { ".validate": "newData.isString() && newData.val().length <= 100" },
         "$other": { ".validate": true }
