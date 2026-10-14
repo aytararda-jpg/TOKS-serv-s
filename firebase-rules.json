@@ -1,0 +1,46 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "toks_jobs": {
+      ".read": "auth != null && root.child('staff').child(auth.uid).val() === true",
+      "$jobId": {
+        ".write": "auth != null && root.child('staff').child(auth.uid).val() === true",
+        ".validate": "newData.hasChildren(['plate','firm','status'])",
+        "plate": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "firm": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "task": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "price": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "basePrice": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "currency": { ".validate": "newData.isString() && (newData.val() === 'TRY' || newData.val() === 'EUR')" },
+        "receipt": { ".validate": "newData.isString() && newData.val().length <= 30" },
+        "status": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4" },
+        "$other": { ".validate": true }
+      }
+    },
+    "toks_quotes": {
+      ".read": "auth != null && root.child('staff').child(auth.uid).val() === true",
+      "$quoteId": {
+        ".write": "auth != null && root.child('staff').child(auth.uid).val() === true",
+        ".validate": "newData.hasChildren(['firm','task','basePrice','currency','quoteDate','status'])",
+        "firm": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+        "plate": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "contact": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "task": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+        "note": { ".validate": "newData.isString() && newData.val().length <= 500" },
+        "basePrice": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 1000000000" },
+        "currency": { ".validate": "newData.isString() && (newData.val() === 'TRY' || newData.val() === 'EUR')" },
+        "exchangeRateAtQuote": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 1000000" },
+        "quoteDate": { ".validate": "newData.isString() && newData.val().length === 10" },
+        "followUpDate": { ".validate": "newData.isString() && newData.val().length === 10" },
+        "status": { ".validate": "newData.isString() && (newData.val() === 'pending' || newData.val() === 'accepted' || newData.val() === 'rejected' || newData.val() === 'not_arrived')" },
+        "linkedJobId": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "$other": { ".validate": true }
+      }
+    },
+    "staff": {
+      ".read": "auth != null",
+      ".write": false
+    }
+  }
+}

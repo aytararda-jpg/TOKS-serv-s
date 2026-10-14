@@ -33,15 +33,16 @@
     .info-widget strong { color: var(--toks-yellow); font-size: 0.8rem; display: block; margin-top: 2px; margin-bottom: 4px; }
     .lock-btn { background: #1e293b; color: #fff; border: 1px solid var(--toks-yellow); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; font-weight: bold; }
 
-    .tabs { display: flex; gap: 8px; margin-bottom: 15px; }
-    .tab { flex: 1; padding: 10px 5px; text-align: center; border: 1px solid var(--border); color: #fff; cursor: pointer; font-weight: bold; background: var(--card-bg); border-radius: 4px; font-size: 0.85rem; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 15px; }
+    .tab { flex: 1; padding: 10px 4px; text-align: center; border: 1px solid var(--border); color: #fff; cursor: pointer; font-weight: bold; background: var(--card-bg); border-radius: 4px; font-size: 0.78rem; }
     .tab.active { background: var(--toks-yellow); color: var(--toks-navy); border-color: var(--toks-yellow); }
 
     .input-panel { background: var(--card-bg); border: 1px solid var(--border); padding: 15px; margin-bottom: 15px; border-radius: 8px; border-top: 3px solid var(--toks-yellow); }
     .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
     
-    input, select, datalist { width: 100%; background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 10px; font-size: 0.9rem; outline: none; border-radius: 4px; text-transform: uppercase; }
-    input:focus, select:focus { border-color: var(--toks-yellow); }
+    input, select, datalist, textarea { width: 100%; background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 10px; font-size: 0.9rem; outline: none; border-radius: 4px; text-transform: uppercase; }
+    textarea { min-height: 72px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { border-color: var(--toks-yellow); }
     input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type=number] { -moz-appearance: textfield; }
 
@@ -84,6 +85,26 @@
     .budget-total { font-size: 1.2rem; color: var(--green); font-weight: bold; text-align: right; margin-top: 10px; }
     .budget-warn { color: var(--orange); font-size: 0.7rem; margin-top: 8px; }
     .chart-container { position: relative; height: 250px; width: 100%; }
+    .section-tabs { display:flex; gap:8px; margin-bottom:15px; }
+    .section-tab { flex:1; border:1px solid var(--border); background:#0f172a; color:#fff; padding:10px 6px; border-radius:4px; font-weight:bold; cursor:pointer; }
+    .section-tab.active { background:var(--toks-yellow); color:var(--toks-navy); border-color:var(--toks-yellow); }
+    .field-label { display:block; color:#cbd5e1; font-size:0.72rem; margin:8px 0 4px; }
+    .form-note { color:#94a3b8; font-size:0.7rem; line-height:1.4; margin:4px 0 9px; }
+    .quote-toolbar { display:flex; gap:8px; margin-bottom:12px; }
+    .quote-toolbar input { flex:2; }
+    .quote-toolbar select { flex:1; }
+    .quote-badge { display:inline-block; font-size:0.68rem; font-weight:bold; padding:4px 7px; border-radius:4px; margin-bottom:7px; }
+    .quote-badge.pending { background:#43310a; color:var(--toks-yellow); }
+    .quote-badge.accepted { background:#073b24; color:var(--green); }
+    .quote-badge.rejected, .quote-badge.not_arrived { background:#4b1124; color:#ff9bbc; }
+    .quote-actions { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+    .quote-actions button { width:auto; flex:1 1 80px; min-height:32px; font-size:0.64rem; font-weight:bold; cursor:pointer; border:1px solid var(--border); border-radius:4px; background:#0f172a; color:#fff; }
+    .quote-actions button:disabled { opacity:0.45; cursor:default; }
+    .quote-stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:8px; margin-bottom:14px; }
+    .quote-stat { background:#0f172a; border:1px solid var(--border); border-radius:6px; padding:10px; }
+    .quote-stat strong { display:block; font-size:1.05rem; margin-top:5px; color:var(--toks-yellow); }
+    .quote-empty { color:#94a3b8; font-size:0.85rem; padding:15px; border:1px dashed var(--border); border-radius:6px; }
+    @media (max-width:540px) { .input-row { flex-direction:column; } .input-row > *, #priceContainer { width:100% !important; } .quote-toolbar { flex-direction:column; } .tab { font-size:0.69rem; } }
 
     /* GİRİŞ EKRANI */
     #loginOverlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 9999; justify-content: center; align-items: center; }
@@ -126,6 +147,7 @@
 
   <div class="tabs">
     <div class="tab active" id="tab-active">AKTİF İŞLER</div>
+    <div class="tab" id="tab-quotes">TEKLİFLER</div>
     <div class="tab" id="tab-archive">ARŞİV</div>
     <div class="tab" id="tab-budget">BÜTÇE</div>
   </div>
@@ -167,6 +189,48 @@
     <div class="grid-container" id="jobList"></div>
   </div>
 
+  <div id="view-quotes" style="display:none;">
+    <div class="input-panel">
+      <div class="modal-title" id="quoteFormTitle">YENİ FİYAT TEKLİFİ</div>
+      <div class="input-row">
+        <input type="text" id="quoteFirm" maxlength="60" placeholder="MÜŞTERİ / FİRMA *">
+        <input type="text" id="quotePlate" maxlength="20" placeholder="PLAKA (VARSA)">
+      </div>
+      <input type="text" id="quoteContact" maxlength="100" placeholder="YETKİLİ / TELEFON (İSTEĞE BAĞLI)">
+      <label class="field-label" for="quoteTask">YAPILACAK İŞ *</label>
+      <textarea id="quoteTask" maxlength="200" placeholder="TEKLİF VERİLEN İŞLERİ YAZIN"></textarea>
+      <div class="input-row">
+        <input type="number" id="quotePrice" min="0.01" max="1000000000" step="0.01" inputmode="decimal" placeholder="FİYAT (KDV HARİÇ) *">
+        <select id="quoteCurrency" aria-label="Teklif para birimi"><option value="TRY">₺ TRY</option><option value="EUR">€ EUR</option></select>
+      </div>
+      <div id="quoteRateRow" style="display:none;">
+        <label class="field-label" for="quoteRate">TEKLİF GÜNÜ EUR/TRY KURU *</label>
+        <input type="number" id="quoteRate" min="0.0001" max="1000000" step="0.0001" inputmode="decimal" placeholder="1 € KAÇ ₺?">
+        <div class="form-note">Bugünün kuru önerilir; geçmiş tarihli teklifte o günkü kuru yazın. Kaydedilen kur raporda sabit kalır.</div>
+      </div>
+      <div class="input-row">
+        <div style="flex:1;"><label class="field-label" for="quoteDate">TEKLİF TARİHİ *</label><input type="date" id="quoteDate"></div>
+        <div style="flex:1;"><label class="field-label" for="quoteFollowUp">TEKRAR ARAMA TARİHİ</label><input type="date" id="quoteFollowUp"></div>
+      </div>
+      <textarea id="quoteNote" maxlength="500" placeholder="NOT (İSTEĞE BAĞLI)"></textarea>
+      <div class="form-note">Tutarlar analizde KDV dahil gösterilir. Teklifler servis geliri hesabına katılmaz.</div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" id="quoteSaveBtn">TEKLİFİ KAYDET</button>
+        <button class="btn" id="quoteCancelBtn" style="display:none; width:30%; background:var(--red); color:#fff;">İPTAL</button>
+      </div>
+    </div>
+    <div class="quote-toolbar">
+      <input type="search" id="quoteSearch" placeholder="FİRMA, PLAKA VEYA İŞ ARA">
+      <select id="quoteFilter" aria-label="Teklif durumu filtresi">
+        <option value="all">TÜM DURUMLAR</option><option value="pending">CEVAP BEKLİYOR</option>
+        <option value="accepted">ONAYLANDI</option><option value="rejected">REDDEDİLDİ</option>
+        <option value="not_arrived">GELMEDİ / VAZGEÇTİ</option>
+      </select>
+    </div>
+    <div id="quoteMessage" class="form-note"></div>
+    <div class="grid-container" id="quoteList"></div>
+  </div>
+
   <div id="view-archive" style="display:none;">
     <div class="grid-container" id="folderList"></div>
     <div id="archiveModal">
@@ -179,6 +243,11 @@
   </div>
 
   <div id="view-budget" style="display:none;">
+    <div class="section-tabs">
+      <button class="section-tab active" id="budgetJobsTab">GERÇEKLEŞEN İŞLER</button>
+      <button class="section-tab" id="budgetQuotesTab">TEKLİF ANALİZİ</button>
+    </div>
+    <div id="budgetJobsView">
     <div class="budget-card">
       <div class="budget-title">FİRMA CARİ DAĞILIMI (ARŞİVLENEN İŞLER)</div>
       <div id="firmBalances"></div>
@@ -199,6 +268,18 @@
         <canvas id="barChart"></canvas>
       </div>
     </div>
+    </div>
+    <div id="budgetQuotesView" style="display:none;">
+      <div class="budget-card">
+        <div class="budget-title">TEKLİF DURUMU</div>
+        <div class="quote-stat-grid" id="quoteStats"></div>
+        <div class="form-note">Tutarlar KDV dahil TL karşılığıdır. EUR tekliflerinde kaydedilen teklif kuru kullanılır. Cevap bekleyenler kaçırılan iş sayılmaz.</div>
+      </div>
+      <div class="budget-card">
+        <div class="budget-title">FİRMALARA GÖRE KAÇIRILAN İŞLER</div>
+        <div id="lostQuoteFirms"></div>
+      </div>
+    </div>
   </div>
 
   </div><!-- /#app -->
@@ -210,14 +291,21 @@
   <script>
     // --- DURUM ---
     let jobs = [];
+    let quotes = [];
     let currentTab = 'active';
+    let budgetMode = 'jobs';
     let currentEuroRate = null;   // Kur bilinmiyorsa null kalır, ASLA 1 varsayılmaz
     let editingId = null;
+    let editingQuoteId = null;
+    let quotesLoaded = false;
+    let quotesError = '';
     let pieChartInstance = null;
     let barChartInstance = null;
     let currentOpenFirm = null;
     let archiveFirms = {};
     let db = null;
+    let quotesDb = null;
+    let rootDb = null;
     let dbBound = false;
 
     // --- HTML KAÇIŞLAMA ---
@@ -275,6 +363,7 @@
         if (typeof rate !== 'number' || !(rate > 0)) throw new Error('invalid rate payload');
         showRate(rate, false);
         try { localStorage.setItem(RATE_KEY, JSON.stringify({ rate: rate, ts: Date.now() })); } catch (e) {}
+        suggestQuoteRate();
         if (dbBound) renderAll();
       })
       .catch(() => {
@@ -307,6 +396,8 @@
         document.getElementById('loginOverlay').style.display = 'flex';
         document.getElementById('app').style.display = 'none';
         jobs = [];
+        quotes = [];
+        quotesLoaded = false;
         return;
       }
 
@@ -315,7 +406,9 @@
 
       if (dbBound) return;
       dbBound = true;
-      db = firebase.database().ref('toks_jobs');
+      rootDb = firebase.database().ref();
+      db = rootDb.child('toks_jobs');
+      quotesDb = rootDb.child('toks_quotes');
       db.on('value', snapshot => {
         const raw = snapshot.val() || {};
         // Hem eski dizi anahtarlarını ("0".."61") hem yeni push anahtarlarını okur.
@@ -326,6 +419,19 @@
       }, () => {
         alert("Veritabanına erişilemedi. Yetkiniz olmayabilir; yöneticiye bildirin.");
       });
+      quotesDb.on('value', snapshot => {
+        quotes = Object.entries(snapshot.val() || {})
+          .filter(entry => entry[1])
+          .map(entry => Object.assign({}, entry[1], { id: entry[0] }));
+        quotesLoaded = true;
+        quotesError = '';
+        renderAll();
+      }, () => {
+        quotesLoaded = false;
+        quotesError = 'Teklif verilerine erişilemedi. Firebase yetkilerini kontrol edin.';
+        renderAll();
+      });
+      resetQuoteForm();
     });
 
     function doLogin() {
@@ -347,9 +453,11 @@
     function switchTab(tab) {
       currentTab = tab;
       document.getElementById('tab-active').classList.toggle('active', tab === 'active');
+      document.getElementById('tab-quotes').classList.toggle('active', tab === 'quotes');
       document.getElementById('tab-archive').classList.toggle('active', tab === 'archive');
       document.getElementById('tab-budget').classList.toggle('active', tab === 'budget');
       document.getElementById('view-active').style.display = tab === 'active' ? 'block' : 'none';
+      document.getElementById('view-quotes').style.display = tab === 'quotes' ? 'block' : 'none';
       document.getElementById('view-archive').style.display = tab === 'archive' ? 'block' : 'none';
       document.getElementById('view-budget').style.display = tab === 'budget' ? 'block' : 'none';
       closeModal();
@@ -358,11 +466,24 @@
 
     function renderAll() {
       if (currentTab === 'active') renderActive();
+      else if (currentTab === 'quotes') renderQuotes();
       else if (currentTab === 'archive') {
         renderFolders();
         if (currentOpenFirm) openModal(currentOpenFirm);
       }
-      else if (currentTab === 'budget') renderBudget();
+      else if (currentTab === 'budget') {
+        if (budgetMode === 'jobs') renderBudget();
+        else renderQuoteAnalytics();
+      }
+    }
+
+    function switchBudgetMode(mode) {
+      budgetMode = mode;
+      document.getElementById('budgetJobsTab').classList.toggle('active', mode === 'jobs');
+      document.getElementById('budgetQuotesTab').classList.toggle('active', mode === 'quotes');
+      document.getElementById('budgetJobsView').style.display = mode === 'jobs' ? 'block' : 'none';
+      document.getElementById('budgetQuotesView').style.display = mode === 'quotes' ? 'block' : 'none';
+      if (currentTab === 'budget') renderAll();
     }
 
     function findJob(id) {
@@ -608,6 +729,306 @@
       });
     }
 
+    // --- FİYAT TEKLİFLERİ ---
+    const QUOTE_STATUSES = {
+      pending: 'CEVAP BEKLİYOR', accepted: 'ONAYLANDI',
+      rejected: 'REDDEDİLDİ', not_arrived: 'GELMEDİ / VAZGEÇTİ'
+    };
+
+    function todayISO() {
+      const d = new Date();
+      return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+    }
+
+    function showDate(iso) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso || ''))) return '-';
+      const [year, month, day] = iso.split('-');
+      return `${day}.${month}.${year}`;
+    }
+
+    function money(amount, currency) {
+      return Number(amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+        (currency === 'EUR' ? ' €' : ' ₺');
+    }
+
+    function quoteTotal(quote) {
+      const base = Number(quote.basePrice);
+      return Number.isFinite(base) && base >= 0 ? Math.round(base * 120) / 100 : null;
+    }
+
+    function quoteTotalTRY(quote) {
+      const total = quoteTotal(quote);
+      if (total === null) return null;
+      if (quote.currency !== 'EUR') return total;
+      const rate = Number(quote.exchangeRateAtQuote);
+      return Number.isFinite(rate) && rate > 0 ? Math.round(total * rate * 100) / 100 : null;
+    }
+
+    function suggestQuoteRate() {
+      if (document.getElementById('quoteCurrency').value !== 'EUR' || editingQuoteId) return;
+      const input = document.getElementById('quoteRate');
+      if (!input.value && typeof currentEuroRate === 'number' && currentEuroRate > 0) {
+        input.value = currentEuroRate.toFixed(4);
+      }
+    }
+
+    function updateQuoteCurrency() {
+      const euro = document.getElementById('quoteCurrency').value === 'EUR';
+      document.getElementById('quoteRateRow').style.display = euro ? 'block' : 'none';
+      if (euro) suggestQuoteRate();
+    }
+
+    function resetQuoteForm() {
+      editingQuoteId = null;
+      for (const id of ['quoteFirm','quotePlate','quoteContact','quoteTask','quotePrice','quoteRate','quoteFollowUp','quoteNote']) {
+        document.getElementById(id).value = '';
+      }
+      document.getElementById('quoteDate').value = todayISO();
+      document.getElementById('quoteCurrency').value = 'TRY';
+      document.getElementById('quoteFormTitle').textContent = 'YENİ FİYAT TEKLİFİ';
+      document.getElementById('quoteSaveBtn').textContent = 'TEKLİFİ KAYDET';
+      document.getElementById('quoteCancelBtn').style.display = 'none';
+      updateQuoteCurrency();
+    }
+
+    function findQuote(id) {
+      return quotes.find(quote => quote.id === id) || null;
+    }
+
+    function editQuote(id) {
+      const quote = findQuote(id);
+      if (!quote || quote.linkedJobId) return;
+      editingQuoteId = id;
+      switchTab('quotes');
+      document.getElementById('quoteFirm').value = quote.firm || '';
+      document.getElementById('quotePlate').value = quote.plate || '';
+      document.getElementById('quoteContact').value = quote.contact || '';
+      document.getElementById('quoteTask').value = quote.task || '';
+      document.getElementById('quotePrice').value = quote.basePrice ?? '';
+      document.getElementById('quoteCurrency').value = quote.currency || 'TRY';
+      document.getElementById('quoteRate').value = quote.exchangeRateAtQuote || '';
+      document.getElementById('quoteDate').value = quote.quoteDate || todayISO();
+      document.getElementById('quoteFollowUp').value = quote.followUpDate || '';
+      document.getElementById('quoteNote').value = quote.note || '';
+      document.getElementById('quoteFormTitle').textContent = 'TEKLİFİ DÜZENLE';
+      document.getElementById('quoteSaveBtn').textContent = 'TEKLİFİ GÜNCELLE';
+      document.getElementById('quoteCancelBtn').style.display = 'block';
+      updateQuoteCurrency();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function saveQuote() {
+      if (!quotesDb || !quotesLoaded) { alert('Teklif verileri henüz hazır değil.'); return; }
+      const firm = document.getElementById('quoteFirm').value.trim().toUpperCase();
+      const plate = document.getElementById('quotePlate').value.trim().toUpperCase();
+      const contact = document.getElementById('quoteContact').value.trim().toUpperCase();
+      const task = document.getElementById('quoteTask').value.trim().toUpperCase();
+      const note = document.getElementById('quoteNote').value.trim().toUpperCase();
+      const basePrice = Number(document.getElementById('quotePrice').value);
+      const currency = document.getElementById('quoteCurrency').value;
+      const quoteDate = document.getElementById('quoteDate').value;
+      const followUpDate = document.getElementById('quoteFollowUp').value;
+      const exchangeRateAtQuote = currency === 'EUR' ? Number(document.getElementById('quoteRate').value) : null;
+      if (!firm || !task || !document.getElementById('quotePrice').value || !Number.isFinite(basePrice) || basePrice <= 0 || basePrice > 1000000000) {
+        alert('Firma, yapılacak iş ve geçerli fiyat gerekli.'); return;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(quoteDate) || (followUpDate && !/^\d{4}-\d{2}-\d{2}$/.test(followUpDate))) {
+        alert('Geçerli bir teklif tarihi girin.'); return;
+      }
+      if (currency === 'EUR' && (!document.getElementById('quoteRate').value || !Number.isFinite(exchangeRateAtQuote) || exchangeRateAtQuote <= 0 || exchangeRateAtQuote > 1000000)) {
+        alert('Euro teklifi için teklif günü kurunu girin.'); return;
+      }
+      const fields = { firm, plate, contact, task, note, basePrice, currency, quoteDate, followUpDate, exchangeRateAtQuote, updatedAt: Date.now() };
+      const button = document.getElementById('quoteSaveBtn');
+      button.disabled = true;
+      try {
+        if (editingQuoteId) {
+          const old = findQuote(editingQuoteId);
+          if (!old || old.linkedJobId) throw new Error('converted');
+          const previous = { firm: old.firm || '', plate: old.plate || '', contact: old.contact || '', task: old.task || '', note: old.note || '', basePrice: old.basePrice, currency: old.currency, quoteDate: old.quoteDate, followUpDate: old.followUpDate || '', exchangeRateAtQuote: old.exchangeRateAtQuote || null, savedAt: Date.now() };
+          const revisionKey = quotesDb.child(editingQuoteId).child('revisions').push().key;
+          await quotesDb.child(editingQuoteId).update({ ...fields, ['revisions/' + revisionKey]: previous });
+        } else {
+          await quotesDb.push({ ...fields, status: 'pending', createdAt: Date.now() });
+        }
+        resetQuoteForm();
+      } catch (e) {
+        alert('Teklif kaydedilemedi. Bağlantı ve yetkileri kontrol edin.');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function setQuoteStatus(id, status) {
+      if (!quotesDb || !Object.prototype.hasOwnProperty.call(QUOTE_STATUSES, status)) return;
+      const quote = findQuote(id);
+      if (!quote || quote.linkedJobId || quote.status === status) return;
+      const historyKey = quotesDb.child(id).child('statusHistory').push().key;
+      try {
+        await quotesDb.child(id).update({ status, statusChangedAt: Date.now(), updatedAt: Date.now(), ['statusHistory/' + historyKey]: { from: quote.status || 'pending', to: status, at: Date.now() } });
+      } catch (e) {
+        alert('Teklif durumu güncellenemedi.');
+      }
+    }
+
+    async function convertQuote(id) {
+      if (!rootDb || !quotesDb || !db) return;
+      const quote = findQuote(id);
+      if (!quote || quote.status !== 'accepted' || quote.linkedJobId) return;
+      if (!quote.plate) { alert('İş açmadan önce teklife plaka ekleyin.'); editQuote(id); return; }
+      const jobId = 'quote_' + id;
+      if (jobs.some(job => job.id === jobId)) { alert('Bu teklif için iş kaydı zaten var.'); return; }
+      const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      const total = quoteTotal(quote);
+      if (total === null) { alert('Teklif fiyatı geçersiz.'); return; }
+      const job = {
+        plate: quote.plate, firm: quote.firm, receipt: '-', task: quote.task,
+        price: total.toFixed(2) + (quote.currency === 'EUR' ? ' € (KDV Dahil)' : ' ₺ (KDV Dahil)'),
+        basePrice: quote.basePrice, currency: quote.currency, status: 0,
+        laborTimeMs: 0, lastStartTimeMs: null, sourceQuoteId: id,
+        history: { waiting: currentTime, inProgress: '-', finished: '-' }
+      };
+      try {
+        await rootDb.update({
+          ['toks_jobs/' + jobId]: job,
+          ['toks_quotes/' + id + '/linkedJobId']: jobId,
+          ['toks_quotes/' + id + '/convertedAt']: Date.now(),
+          ['toks_quotes/' + id + '/updatedAt']: Date.now()
+        });
+        switchTab('active');
+      } catch (e) {
+        alert('Teklif işe dönüştürülemedi. Kayıtlar değiştirilmedi.');
+      }
+    }
+
+    function generateQuotePDF(id) {
+      const quote = findQuote(id);
+      if (!quote) return;
+      if (!window.jspdf) { alert('PDF kütüphanesi yüklenemedi.'); return; }
+      const total = quoteTotal(quote);
+      if (total === null) return;
+      const plain = value => String(value || '').replace(/[çÇ]/g,'C').replace(/[ğĞ]/g,'G')
+        .replace(/[ıİ]/g,'I').replace(/[öÖ]/g,'O').replace(/[şŞ]/g,'S').replace(/[üÜ]/g,'U');
+      const priceLabel = value => money(value, quote.currency).replace('₺', 'TL').replace('€', 'EUR');
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(24); doc.setTextColor(10, 29, 58);
+      doc.text('TOKS', 15, 25);
+      doc.setFontSize(10); doc.setTextColor(90, 100, 110);
+      doc.text('TREYLER SERVIS | KAROSER | BRANDA', 15, 32);
+      doc.setDrawColor(255, 204, 0); doc.setLineWidth(1.3); doc.line(15, 39, 195, 39);
+      doc.setFontSize(18); doc.setTextColor(10, 29, 58); doc.text('FIYAT TEKLIFI', 15, 52);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(40, 40, 40);
+      doc.text('Tarih: ' + showDate(quote.quoteDate), 15, 63);
+      doc.text('Firma: ' + plain(quote.firm), 15, 72);
+      doc.text('Plaka: ' + plain(quote.plate || '-'), 15, 81);
+      doc.setFont('helvetica', 'bold'); doc.text('YAPILACAK ISLER', 15, 97);
+      doc.setFont('helvetica', 'normal');
+      doc.text(doc.splitTextToSize(plain(quote.task), 178), 15, 106);
+      doc.setDrawColor(200, 200, 200); doc.line(15, 145, 195, 145);
+      doc.text('KDV Haric: ' + priceLabel(quote.basePrice), 15, 159);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+      doc.text('KDV Dahil: ' + priceLabel(total), 15, 171);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 100, 100);
+      doc.text('Bu belge fiyat teklifidir; tamamlanmis servis islemi veya fatura degildir.', 15, 189);
+      const safeFirm = plain(quote.firm).replace(/[^A-Z0-9]/gi, '_').slice(0, 40) || 'FIRMA';
+      doc.save(`TOKS_TEKLIF_${safeFirm}_${quote.quoteDate || todayISO()}.pdf`);
+    }
+
+    function renderQuotes() {
+      const list = document.getElementById('quoteList');
+      const message = document.getElementById('quoteMessage');
+      if (quotesError || !quotesLoaded) {
+        message.textContent = quotesError || 'Teklifler yükleniyor...';
+        list.innerHTML = '';
+        return;
+      }
+      const search = document.getElementById('quoteSearch').value.trim().toLocaleUpperCase('tr-TR');
+      const filter = document.getElementById('quoteFilter').value;
+      const today = todayISO();
+      const selected = quotes.filter(quote =>
+        (filter === 'all' || quote.status === filter) &&
+        (!search || [quote.firm, quote.plate, quote.task, quote.contact].some(value => String(value || '').toLocaleUpperCase('tr-TR').includes(search)))
+      ).sort((a, b) => {
+        const aDue = a.status === 'pending' && a.followUpDate ? a.followUpDate : '9999-12-31';
+        const bDue = b.status === 'pending' && b.followUpDate ? b.followUpDate : '9999-12-31';
+        return aDue.localeCompare(bDue) || String(b.quoteDate || '').localeCompare(String(a.quoteDate || '')) || Number(b.createdAt || 0) - Number(a.createdAt || 0);
+      });
+      const overdue = quotes.filter(quote => quote.status === 'pending' && quote.followUpDate && quote.followUpDate < today).length;
+      message.textContent = `${selected.length} teklif gösteriliyor${overdue ? ' • ' + overdue + ' teklifin arama tarihi geçti' : ''}.`;
+      if (!selected.length) { list.innerHTML = '<div class="quote-empty">Bu filtrede teklif bulunmuyor.</div>'; return; }
+      list.innerHTML = selected.map(quote => {
+        const id = esc(quote.id);
+        const status = Object.prototype.hasOwnProperty.call(QUOTE_STATUSES, quote.status) ? quote.status : 'pending';
+        const total = quoteTotal(quote);
+        const isOverdue = status === 'pending' && quote.followUpDate && quote.followUpDate < today;
+        const revisions = quote.revisions ? Object.values(quote.revisions) : [];
+        const options = Object.entries(QUOTE_STATUSES).map(([key, label]) => `<option value="${key}" ${key === status ? 'selected' : ''}>${label}</option>`).join('');
+        const previous = revisions.length ? `<details class="form-note"><summary>${revisions.length} önceki sürüm</summary>${revisions.map(rev => `<div>${esc(showDate(rev.quoteDate))}: ${esc(rev.task || '')} — ${esc(money(quoteTotal(rev) || 0, rev.currency))}</div>`).join('')}</details>` : '';
+        return `<div class="job-card" style="border-top:3px solid ${status === 'accepted' ? 'var(--green)' : status === 'pending' ? 'var(--toks-yellow)' : 'var(--red)'};">
+          <div>
+            <div class="quote-badge ${status}">${esc(QUOTE_STATUSES[status])}</div>
+            <div class="plate">${esc(quote.plate || 'PLAKA BEKLENİYOR')}</div>
+            <div class="firm">${esc(quote.firm || '')}</div>
+            <div class="task" style="white-space:pre-wrap;">${esc(quote.task || '')}</div>
+            <div class="price-tag">Teklif: ${total === null ? 'Fiyat yok' : esc(money(total, quote.currency))} (KDV dahil)</div>
+            ${quote.currency === 'EUR' ? `<div class="form-note">Teklif kuru: 1 € = ${esc(money(quote.exchangeRateAtQuote, 'TRY'))}</div>` : ''}
+            <div class="timeline">
+              <div><span>Teklif:</span> ${esc(showDate(quote.quoteDate))}</div>
+              <div><span>Tekrar ara:</span> <span style="color:${isOverdue ? 'var(--red)' : '#fff'};">${esc(showDate(quote.followUpDate))}${isOverdue ? ' • GECİKTİ' : ''}</span></div>
+              ${quote.contact ? `<div><span>İletişim:</span> ${esc(quote.contact)}</div>` : ''}
+              ${quote.note ? `<div style="display:block; white-space:pre-wrap;"><span>Not:</span> ${esc(quote.note)}</div>` : ''}
+            </div>
+            ${previous}
+            ${quote.linkedJobId ? `<div class="form-note" style="color:var(--green);">İş emrine dönüştürüldü.</div>` : ''}
+          </div>
+          <div class="quote-actions"><button data-qact="pdf" data-id="${id}">PDF İNDİR</button></div>
+          ${quote.linkedJobId ? '' : `<div>
+            <select data-quote-status="${id}" aria-label="Teklif durumu">${options}</select>
+            <div class="quote-actions">
+              <button data-qact="status" data-id="${id}">DURUMU KAYDET</button>
+              <button data-qact="edit" data-id="${id}">DÜZENLE</button>
+              ${status === 'accepted' ? `<button data-qact="convert" data-id="${id}" style="border-color:var(--green); color:var(--green);">İŞE ÇEVİR</button>` : ''}
+            </div>
+          </div>`}
+        </div>`;
+      }).join('');
+    }
+
+    function renderQuoteAnalytics() {
+      const stats = document.getElementById('quoteStats');
+      const firms = document.getElementById('lostQuoteFirms');
+      if (quotesError || !quotesLoaded) {
+        stats.innerHTML = `<div class="quote-empty">${esc(quotesError || 'Teklifler yükleniyor...')}</div>`;
+        firms.innerHTML = '';
+        return;
+      }
+      const sums = { all: { count: 0, amount: 0 }, pending: { count: 0, amount: 0 }, accepted: { count: 0, amount: 0 }, lost: { count: 0, amount: 0 } };
+      const lostByFirm = {};
+      let missingRate = 0;
+      for (const quote of quotes) {
+        const status = quote.status || 'pending';
+        const group = status === 'rejected' || status === 'not_arrived' ? 'lost' : status;
+        const amount = quoteTotalTRY(quote);
+        sums.all.count++;
+        if (sums[group]) sums[group].count++;
+        if (amount === null) { missingRate++; continue; }
+        sums.all.amount += amount;
+        if (sums[group]) sums[group].amount += amount;
+        if (group === 'lost') {
+          const firm = quote.firm || 'BİLİNMEYEN FİRMA';
+          if (!lostByFirm[firm]) lostByFirm[firm] = { count: 0, amount: 0 };
+          lostByFirm[firm].count++;
+          lostByFirm[firm].amount += amount;
+        }
+      }
+      const labels = [['all','VERİLEN TEKLİF'], ['accepted','ONAYLANAN'], ['lost','KAÇIRILAN İŞ'], ['pending','CEVAP BEKLEYEN']];
+      stats.innerHTML = labels.map(([key,label]) => `<div class="quote-stat">${label}<strong>${esc(money(sums[key].amount, 'TRY'))}</strong><div class="form-note">${sums[key].count} teklif</div></div>`).join('') +
+        (missingRate ? `<div class="budget-warn">${missingRate} teklifin kuru veya tutarı eksik; TL toplamına katılmadı.</div>` : '');
+      const rows = Object.entries(lostByFirm).sort((a,b) => b[1].amount - a[1].amount);
+      firms.innerHTML = rows.length ? rows.map(([firm, item]) => `<div class="budget-row"><span>${esc(firm)} (${item.count})</span><span style="color:var(--red); font-weight:bold;">${esc(money(item.amount, 'TRY'))}</span></div>`).join('') : '<div class="quote-empty">Henüz kayıp olarak kapatılmış teklif yok.</div>';
+    }
+
     // --- DÜZENLEME VE KAYIT SİSTEMİ ---
     function editJob(id) {
       const job = findJob(id);
@@ -803,8 +1224,30 @@
     });
 
     document.getElementById('tab-active').addEventListener('click', () => switchTab('active'));
+    document.getElementById('tab-quotes').addEventListener('click', () => switchTab('quotes'));
     document.getElementById('tab-archive').addEventListener('click', () => switchTab('archive'));
     document.getElementById('tab-budget').addEventListener('click', () => switchTab('budget'));
+    document.getElementById('budgetJobsTab').addEventListener('click', () => switchBudgetMode('jobs'));
+    document.getElementById('budgetQuotesTab').addEventListener('click', () => switchBudgetMode('quotes'));
+
+    document.getElementById('quoteSaveBtn').addEventListener('click', saveQuote);
+    document.getElementById('quoteCancelBtn').addEventListener('click', resetQuoteForm);
+    document.getElementById('quoteCurrency').addEventListener('change', updateQuoteCurrency);
+    document.getElementById('quoteSearch').addEventListener('input', renderQuotes);
+    document.getElementById('quoteFilter').addEventListener('change', renderQuotes);
+    document.getElementById('quoteList').addEventListener('click', e => {
+      const button = e.target.closest('[data-qact]');
+      if (!button) return;
+      const id = button.dataset.id;
+      if (button.dataset.qact === 'edit') editQuote(id);
+      else if (button.dataset.qact === 'convert') convertQuote(id);
+      else if (button.dataset.qact === 'pdf') generateQuotePDF(id);
+      else if (button.dataset.qact === 'status') {
+        const select = [...document.querySelectorAll('#quoteList select[data-quote-status]')]
+          .find(item => item.dataset.quoteStatus === id);
+        if (select) setQuoteStatus(id, select.value);
+      }
+    });
 
     document.getElementById('saveBtn').addEventListener('click', saveJob);
     document.getElementById('cancelBtn').addEventListener('click', cancelEdit);
