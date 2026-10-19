@@ -38,6 +38,17 @@
         "$other": { ".validate": true }
       }
     },
+    "toks_inventory": {
+      ".read": "auth != null && root.child('staff').child(auth.uid).val() === true",
+      "$materialId": {
+        ".write": "auth != null && root.child('staff').child(auth.uid).val() === true",
+        ".validate": "newData.hasChildren(['name','unit'])",
+        "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+        "unit": { ".validate": "newData.isString() && (newData.val() === 'ADET' || newData.val() === 'METRE' || newData.val() === 'M²' || newData.val() === 'KG' || newData.val() === 'BOY' || newData.val() === 'SET')" },
+        "openingQty": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000" },
+        "$other": { ".validate": true }
+      }
+    },
     "staff": {
       ".read": "auth != null",
       ".write": false

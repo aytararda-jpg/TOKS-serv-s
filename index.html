@@ -109,7 +109,20 @@
     .quote-stat { background:#0f172a; border:1px solid var(--border); border-radius:6px; padding:10px; }
     .quote-stat strong { display:block; font-size:1.05rem; margin-top:5px; color:var(--toks-yellow); }
     .quote-empty { color:#94a3b8; font-size:0.85rem; padding:15px; border:1px dashed var(--border); border-radius:6px; }
-    @media (max-width:540px) { .input-row { flex-direction:column; } .input-row > *, #priceContainer { width:100% !important; } .quote-toolbar { flex-direction:column; } .tab { font-size:0.69rem; } }
+    .material-line { display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid #1e293b; font-size:0.74rem; }
+    .material-line:last-child { border-bottom:none; }
+    .stock-card { background:var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:12px; }
+    .stock-card h3 { color:var(--toks-yellow); font-size:0.9rem; margin-bottom:8px; }
+    .stock-card .input-row { margin-top:9px; }
+    .stock-card .input-row input { min-width:0; }
+    .stock-card button { background:#0f172a; color:#fff; border:1px solid var(--toks-yellow); border-radius:4px; padding:8px; cursor:pointer; font-weight:bold; }
+    .stock-negative { color:var(--red); }
+    .stock-positive { color:var(--green); }
+    .material-overlay { display:none; position:fixed; inset:0; z-index:110; background:rgba(0,0,0,.85); padding:15px; overflow:auto; }
+    .material-dialog { max-width:620px; margin:45px auto; background:#0a1420; border:2px solid var(--toks-yellow); border-radius:8px; padding:16px; }
+    .material-dialog .input-row input:first-child { flex:3; }
+    .material-dialog .input-row input:nth-child(2) { flex:1; }
+    @media (max-width:540px) { .input-row { flex-direction:column; } .input-row > *, #priceContainer { width:100% !important; } .quote-toolbar { flex-direction:column; } .tab { font-size:0.62rem; } .material-dialog { margin:10px auto; } }
 
     /* GİRİŞ EKRANI */
     #loginOverlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 9999; justify-content: center; align-items: center; }
@@ -154,6 +167,7 @@
     <div class="tab active" id="tab-active">AKTİF İŞLER</div>
     <div class="tab" id="tab-quotes">TEKLİFLER</div>
     <div class="tab" id="tab-archive">ARŞİV</div>
+    <div class="tab" id="tab-stock">STOK</div>
     <div class="tab" id="tab-budget">BÜTÇE</div>
   </div>
 
@@ -231,8 +245,7 @@
       <input type="search" id="quoteSearch" placeholder="FİRMA, PLAKA, TELEFON VEYA İŞ ARA">
       <select id="quoteFilter" aria-label="Teklif durumu filtresi">
         <option value="all">TÜM DURUMLAR</option><option value="pending">CEVAP BEKLİYOR</option>
-        <option value="accepted">ONAYLANDI</option><option value="rejected">REDDEDİLDİ</option>
-        <option value="not_arrived">GELMEDİ / VAZGEÇTİ</option>
+        <option value="accepted">ONAYLANDI</option>
       </select>
     </div>
     <div id="quoteMessage" class="form-note"></div>
@@ -240,13 +253,49 @@
   </div>
 
   <div id="view-archive" style="display:none;">
-    <div class="grid-container" id="folderList"></div>
-    <div id="archiveModal">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <div class="modal-title" id="modalTitle" style="margin:0;"></div>
-        <button id="modalBackBtn" style="background:var(--border); color:#fff; border:none; padding:8px 15px; border-radius:4px; font-weight:bold; cursor:pointer;">← Geri Dön</button>
+    <div class="section-tabs">
+      <button class="section-tab active" id="archiveJobsTab">SERVİS İŞLERİ</button>
+      <button class="section-tab" id="archiveQuotesTab">FİYAT TEKLİFLERİ</button>
+    </div>
+    <div id="archiveJobsView">
+      <div class="grid-container" id="folderList"></div>
+      <div id="archiveModal">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div class="modal-title" id="modalTitle" style="margin:0;"></div>
+          <button id="modalBackBtn" style="background:var(--border); color:#fff; border:none; padding:8px 15px; border-radius:4px; font-weight:bold; cursor:pointer;">← Geri Dön</button>
+        </div>
+        <div class="grid-container" id="modalJobs"></div>
       </div>
-      <div class="grid-container" id="modalJobs"></div>
+    </div>
+    <div id="archiveQuotesView" style="display:none;">
+      <div class="quote-toolbar">
+        <input type="search" id="archiveQuoteSearch" placeholder="FİRMA, PLAKA VEYA İŞ ARA">
+        <select id="archiveQuoteFilter" aria-label="Arşiv teklif durumu filtresi">
+          <option value="all">TÜM DURUMLAR</option><option value="accepted">ONAYLANDI</option>
+          <option value="rejected">REDDEDİLDİ</option><option value="not_arrived">GELMEDİ / VAZGEÇTİ</option>
+          <option value="pending">CEVAP BEKLİYOR</option>
+        </select>
+      </div>
+      <div id="archiveQuoteMessage" class="form-note"></div>
+      <div class="grid-container" id="archiveQuoteList"></div>
+    </div>
+  </div>
+
+  <div id="view-stock" style="display:none;">
+    <div class="input-panel">
+      <div class="modal-title">MALZEME STOK TAKİBİ</div>
+      <div class="form-note">Fiyat listesinden malzeme adları ve birimleri alındı; satış fiyatları kullanılmaz. Kullanım iş bitince düşer. İptal veya silme stoku geri getirir.</div>
+      <input type="search" id="stockSearch" placeholder="MALZEME ARA (ÖRN. BRANDA TOKASI)">
+      <div id="stockMessage" class="form-note"></div>
+    </div>
+    <div class="grid-container" id="stockList"></div>
+    <div class="input-panel" style="margin-top:15px;">
+      <div class="modal-title">LİSTEDE OLMAYAN MALZEME</div>
+      <div class="input-row">
+        <input type="text" id="stockCustomName" maxlength="100" placeholder="MALZEME ADI">
+        <select id="stockCustomUnit" aria-label="Malzeme birimi"><option>ADET</option><option>METRE</option><option>M²</option><option>KG</option><option>BOY</option><option>SET</option></select>
+      </div>
+      <button class="btn" id="stockCustomAddBtn">MALZEMEYİ EKLE</button>
     </div>
   </div>
 
@@ -292,6 +341,24 @@
 
   </div><!-- /#app -->
 
+  <div class="material-overlay" id="materialOverlay" role="dialog" aria-modal="true" aria-labelledby="materialDialogTitle">
+    <div class="material-dialog">
+      <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+        <div class="modal-title" id="materialDialogTitle">İŞTE KULLANILAN MALZEMELER</div>
+        <button id="materialCloseBtn" class="s-btn" style="flex:none; padding:8px;">KAPAT</button>
+      </div>
+      <div class="form-note" id="materialJobInfo"></div>
+      <div id="materialDraftList"></div>
+      <div class="input-row" style="margin-top:12px;">
+        <input type="text" id="materialNameInput" list="materialNameOptions" placeholder="MALZEME ADI YAZ / SEÇ">
+        <datalist id="materialNameOptions"></datalist>
+        <input type="text" inputmode="decimal" id="materialQtyInput" placeholder="ADET / MİKTAR">
+      </div>
+      <button class="btn" id="materialAddBtn">MALZEME EKLE</button>
+      <button class="btn" id="materialSaveBtn" style="background:var(--green);">KULLANIMI KAYDET</button>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -300,13 +367,19 @@
     // --- DURUM ---
     let jobs = [];
     let quotes = [];
+    let inventory = {};
     let currentTab = 'active';
+    let archiveMode = 'jobs';
     let budgetMode = 'jobs';
     let currentEuroRate = null;   // Kur bilinmiyorsa null kalır, ASLA 1 varsayılmaz
     let editingId = null;
     let editingQuoteId = null;
     let quotesLoaded = false;
     let quotesError = '';
+    let inventoryLoaded = false;
+    let inventoryError = '';
+    let editingMaterialsJobId = null;
+    let draftJobMaterials = {};
     const quoteStatusSaving = new Set();
     let pieChartInstance = null;
     let barChartInstance = null;
@@ -314,6 +387,7 @@
     let archiveFirms = {};
     let db = null;
     let quotesDb = null;
+    let inventoryDb = null;
     let rootDb = null;
     let dbBound = false;
 
@@ -406,7 +480,10 @@
         document.getElementById('app').style.display = 'none';
         jobs = [];
         quotes = [];
+        inventory = {};
         quotesLoaded = false;
+        inventoryLoaded = false;
+        closeMaterialDialog();
         return;
       }
 
@@ -418,6 +495,7 @@
       rootDb = firebase.database().ref();
       db = rootDb.child('toks_jobs');
       quotesDb = rootDb.child('toks_quotes');
+      inventoryDb = rootDb.child('toks_inventory');
       db.on('value', snapshot => {
         const raw = snapshot.val() || {};
         // Hem eski dizi anahtarlarını ("0".."61") hem yeni push anahtarlarını okur.
@@ -438,6 +516,16 @@
       }, () => {
         quotesLoaded = false;
         quotesError = 'Teklif verilerine erişilemedi. Firebase yetkilerini kontrol edin.';
+        renderAll();
+      });
+      inventoryDb.on('value', snapshot => {
+        inventory = snapshot.val() || {};
+        inventoryLoaded = true;
+        inventoryError = '';
+        renderAll();
+      }, () => {
+        inventoryLoaded = false;
+        inventoryError = 'Stok verilerine erişilemedi. Firebase yetkilerini kontrol edin.';
         renderAll();
       });
       resetQuoteForm();
@@ -464,10 +552,12 @@
       document.getElementById('tab-active').classList.toggle('active', tab === 'active');
       document.getElementById('tab-quotes').classList.toggle('active', tab === 'quotes');
       document.getElementById('tab-archive').classList.toggle('active', tab === 'archive');
+      document.getElementById('tab-stock').classList.toggle('active', tab === 'stock');
       document.getElementById('tab-budget').classList.toggle('active', tab === 'budget');
       document.getElementById('view-active').style.display = tab === 'active' ? 'block' : 'none';
       document.getElementById('view-quotes').style.display = tab === 'quotes' ? 'block' : 'none';
       document.getElementById('view-archive').style.display = tab === 'archive' ? 'block' : 'none';
+      document.getElementById('view-stock').style.display = tab === 'stock' ? 'block' : 'none';
       document.getElementById('view-budget').style.display = tab === 'budget' ? 'block' : 'none';
       closeModal();
       renderAll();
@@ -477,9 +567,12 @@
       if (currentTab === 'active') renderActive();
       else if (currentTab === 'quotes') renderQuotes();
       else if (currentTab === 'archive') {
-        renderFolders();
-        if (currentOpenFirm) openModal(currentOpenFirm);
+        if (archiveMode === 'jobs') {
+          renderFolders();
+          if (currentOpenFirm) openModal(currentOpenFirm);
+        } else renderQuotes(true);
       }
+      else if (currentTab === 'stock') renderStock();
       else if (currentTab === 'budget') {
         if (budgetMode === 'jobs') renderBudget();
         else renderQuoteAnalytics();
@@ -493,6 +586,16 @@
       document.getElementById('budgetJobsView').style.display = mode === 'jobs' ? 'block' : 'none';
       document.getElementById('budgetQuotesView').style.display = mode === 'quotes' ? 'block' : 'none';
       if (currentTab === 'budget') renderAll();
+    }
+
+    function switchArchiveMode(mode) {
+      archiveMode = mode;
+      document.getElementById('archiveJobsTab').classList.toggle('active', mode === 'jobs');
+      document.getElementById('archiveQuotesTab').classList.toggle('active', mode === 'quotes');
+      document.getElementById('archiveJobsView').style.display = mode === 'jobs' ? 'block' : 'none';
+      document.getElementById('archiveQuotesView').style.display = mode === 'quotes' ? 'block' : 'none';
+      closeModal();
+      if (currentTab === 'archive') renderAll();
     }
 
     function findJob(id) {
@@ -530,7 +633,7 @@
       const parts = [];
 
       jobs.forEach(job => {
-        if (!job || job.status === 3) return;
+        if (!job || job.status === 3 || job.cancelledAt || job.deletedAt) return;
         let c0 = job.status === 0 ? 'active-0' : '';
         let c1 = job.status === 1 ? 'active-1' : '';
         let c2 = job.status === 2 ? 'active-2' : '';
@@ -563,6 +666,7 @@
                 <div><span>Çıkış:</span> ${esc(fTime)}</div>
                 <div class="labor-time"><span>⏳ Toplam İşçilik:</span> <span style="color:#fff; font-weight:bold;">${esc(getLaborString(job))}</span></div>
               </div>
+              ${jobMaterialsMarkup(job)}
             </div>
             <div>
               <div class="status-grid" style="margin-bottom: 4px;">
@@ -574,6 +678,8 @@
               </div>
               <div style="display:flex; justify-content:space-between; margin-top:4px;">
                 <button data-act="edit" data-id="${id}" style="background:transparent; border:1px solid #cbd5e1; color:#cbd5e1; font-size:0.6rem; padding:2px 8px; border-radius:3px;">DÜZENLE</button>
+                <button data-act="materials" data-id="${id}" style="background:transparent; border:1px solid var(--toks-yellow); color:var(--toks-yellow); font-size:0.6rem; padding:2px 8px; border-radius:3px;">MALZEME</button>
+                <button data-act="cancel" data-id="${id}" style="background:transparent; border:1px solid var(--orange); color:var(--orange); font-size:0.6rem; padding:2px 8px; border-radius:3px;">İPTAL</button>
                 <button data-act="delete" data-id="${id}" style="background:transparent; border:1px solid var(--red); color:var(--red); font-size:0.6rem; padding:2px 8px; border-radius:3px;">SİL</button>
               </div>
             </div>
@@ -590,8 +696,8 @@
       archiveFirms = {};
 
       jobs.forEach(job => {
-        if (job && job.status === 3) {
-          let fname = job.firm || "BİLİNMEYEN FİRMA";
+        if (job && (job.status === 3 || job.cancelledAt || job.deletedAt)) {
+          let fname = job.deletedAt ? '__deleted__' : job.cancelledAt ? '__cancelled__' : (job.firm || "BİLİNMEYEN FİRMA");
           if (!archiveFirms[fname]) archiveFirms[fname] = [];
           archiveFirms[fname].push(job);
         }
@@ -601,7 +707,7 @@
       for (const [firmName, firmJobs] of Object.entries(archiveFirms)) {
         parts.push(`
           <div class="folder" data-firm="${esc(firmName)}">
-            <div class="folder-icon">🗂️</div><div class="folder-name">${esc(firmName)}</div>
+            <div class="folder-icon">🗂️</div><div class="folder-name">${esc(firmName === '__deleted__' ? 'SİLİNEN İŞLER' : firmName === '__cancelled__' ? 'İPTAL EDİLEN İŞLER' : firmName)}</div>
             <div class="folder-count">${firmJobs.length} İşlem</div>
           </div>
         `);
@@ -613,7 +719,7 @@
       currentOpenFirm = firmName;
       document.getElementById('folderList').style.display = 'none';
       document.getElementById('archiveModal').style.display = 'block';
-      document.getElementById('modalTitle').innerText = "🗂️ " + firmName;
+      document.getElementById('modalTitle').innerText = "🗂️ " + (firmName === '__deleted__' ? 'SİLİNEN İŞLER' : firmName === '__cancelled__' ? 'İPTAL EDİLEN İŞLER' : firmName);
 
       const list = document.getElementById('modalJobs');
       const parts = [];
@@ -627,11 +733,13 @@
           const fTime = hist.finished || '-';
 
           parts.push(`
-            <div class="job-card" style="border-top: 3px solid var(--green);">
+            <div class="job-card" style="border-top: 3px solid ${job.cancelledAt || job.deletedAt ? 'var(--orange)' : 'var(--green)'};">
               <div>
                 <div class="plate">${esc(job.plate || '')} <span style="font-size:0.7rem; color:var(--toks-yellow);">(Fiş: ${esc(job.receipt || '-')})</span></div>
                 <div class="task">${esc(job.task || '')}</div>
                 <div class="price-tag">Tutar: ${esc(job.price || 'Belirtilmemiş')}${rateTextFor(job)}</div>
+                ${job.cancelledAt ? '<div class="quote-badge not_arrived">İPTAL EDİLDİ • MALZEME STOĞA GERİ DÖNDÜ</div>' : ''}
+                ${job.deletedAt ? '<div class="quote-badge not_arrived">SİLİNDİ • MALZEME STOĞA GERİ DÖNDÜ</div>' : ''}
 
                 <div class="timeline">
                   <div><span>Giriş:</span> ${esc(wTime)}</div>
@@ -639,13 +747,15 @@
                   <div><span>Çıkış:</span> ${esc(fTime)}</div>
                   <div class="labor-time"><span>⏳ Toplam İşçilik:</span> <span style="color:#fff; font-weight:bold;">${esc(getLaborString(job))}</span></div>
                 </div>
+                ${jobMaterialsMarkup(job)}
               </div>
               <div>
                 <button class="btn" data-act="pdf" data-id="${id}" style="background:var(--toks-yellow); color:var(--toks-navy); padding:8px; font-size:0.75rem; margin-bottom:5px;">📄 PDF İNDİR</button>
                 <div style="display:flex; gap:5px;">
                   <button class="s-btn" data-act="status" data-id="${id}" data-status="0" style="background:var(--border); color:#fff; padding:6px;">GERİ AL</button>
-                  <button class="s-btn" data-act="edit" data-id="${id}" style="background:var(--border); color:#cbd5e1; padding:6px;">DÜZENLE</button>
-                  <button class="s-btn" data-act="delete" data-id="${id}" style="background:var(--red); color:#fff; padding:6px;">SİL</button>
+                  ${job.cancelledAt || job.deletedAt ? '' : `<button class="s-btn" data-act="edit" data-id="${id}" style="background:var(--border); color:#cbd5e1; padding:6px;">DÜZENLE</button>`}
+                  ${job.cancelledAt || job.deletedAt ? '' : `<button class="s-btn" data-act="materials" data-id="${id}" style="background:var(--border); color:var(--toks-yellow); padding:6px;">MALZEME</button>`}
+                  ${job.deletedAt ? '' : `<button class="s-btn" data-act="delete" data-id="${id}" style="background:var(--red); color:#fff; padding:6px;">SİL</button>`}
                 </div>
               </div>
             </div>
@@ -670,7 +780,7 @@
       let skippedNoRate = 0;
 
       jobs.forEach(job => {
-        if (job && job.status === 3) {
+        if (job && job.status === 3 && !job.cancelledAt && !job.deletedAt) {
           let priceStr = job.price || "";
           let amount = parseFloat(priceStr) || 0;
 
@@ -743,6 +853,9 @@
       pending: 'CEVAP BEKLİYOR', accepted: 'ONAYLANDI',
       rejected: 'REDDEDİLDİ', not_arrived: 'GELMEDİ / VAZGEÇTİ'
     };
+
+    // Kaynak: SATIŞ FİYATLARI 27.02.2026, yalnızca malzeme adı ve birim; satış fiyatı aktarılmaz.
+    const STOCK_CATALOG = [{"id":"basic_branda_tokasi","name":"BRANDA TOKASI","unit":"ADET"},{"id":"xlsm_3","name":"Edscha ALÜ. RAY 16,50 GÜMRÜKLÜ","unit":"ADET"},{"id":"xlsm_4","name":"Edscha YAĞMUR LASTİĞİ ALÜ. RAY","unit":"METRE"},{"id":"xlsm_5","name":"VERSUS YAĞMUR LASTİĞİ GÜMRÜKLÜ","unit":"METRE"},{"id":"xlsm_6","name":"VERSUS YAĞMUR LASTİĞİ NORMAL DAR RAY","unit":"METRE"},{"id":"xlsm_7","name":"ARKA ARABA BİLYASI EDSCHA","unit":"ADET"},{"id":"xlsm_8","name":"EDCHA ARA PROFİL BAŞLIKLAR DAHİL","unit":"ADET"},{"id":"xlsm_9","name":"EDSCHA ARABA","unit":"ADET"},{"id":"xlsm_10","name":"EDSCHA ARABA TAŞIYICI AYAK PLASTİK","unit":"ADET"},{"id":"xlsm_11","name":"ÇATI ARABA PİSTONU","unit":"ADET"},{"id":"xlsm_12","name":"RAYLI ÇATI BASTONU","unit":"ADET"},{"id":"xlsm_13","name":"GEMA MODEL PLAKET","unit":"ADET"},{"id":"xlsm_14","name":"PLAKETİ (SESAM-VERSUS-EDSCHA)","unit":"ADET"},{"id":"xlsm_15","name":"RAYLI ÇATI RULMANI","unit":"ADET"},{"id":"xlsm_16","name":"BABA RAYI GALVANİZ","unit":"METRE"},{"id":"xlsm_17","name":"PERDE RAYI GALVANİZ","unit":"METRE"},{"id":"xlsm_18","name":"YAĞMUR LASTİĞİ ÇELİK RAY","unit":"METRE"},{"id":"xlsm_20","name":"EDSCHA YENİ MODEL ARA PROFİL TAŞIYICI","unit":"ADET"},{"id":"xlsm_21","name":"EDSCHA YENİ MODEL PLAKET","unit":"ADET"},{"id":"xlsm_22","name":"PVC KAPI FİTİLİ 32LİK (1 BY 3,20 MT)","unit":"BOY"},{"id":"xlsm_23","name":"PVC KAPI FİTİLİ 42LİK (1 BY 3,20 MT)","unit":"BOY"},{"id":"xlsm_25","name":"ARKA KAPI SAĞ - SOL ALT ÜST ÇERÇEVESİ","unit":"ADET"},{"id":"xlsm_26","name":"ARKA KAPI 4 & 5 MENTEŞE PROFİLİ","unit":"ADET"},{"id":"xlsm_28","name":"ARKA KAPI SAĞ KAPI ORTA ÇERÇEVESİ","unit":"ADET"},{"id":"xlsm_29","name":"ARKA KAPI SOL KAPI ORTA ÇERÇEVESİ","unit":"ADET"},{"id":"xlsm_30","name":"ARKA KAPI KİLİT KOLU","unit":"ADET"},{"id":"xlsm_31","name":"ARKA KAPI GAGASI","unit":"ADET"},{"id":"xlsm_32","name":"ARKA KAPI ALT GAGA YUVASI","unit":"ADET"},{"id":"xlsm_33","name":"ARKA KAPI ÜST GAGA YUVASI","unit":"ADET"},{"id":"xlsm_34","name":"KAPI FİTİLİ T ORTA FİTİL","unit":"ADET"},{"id":"xlsm_35","name":"KAPI FİTİLİ TIRNAKLI BALON","unit":"ADET"},{"id":"xlsm_36","name":"KAPI MENTEŞE YUVASI","unit":"ADET"},{"id":"xlsm_37","name":"MENTEŞE PİM BURCU","unit":"ADET"},{"id":"xlsm_38","name":"MENTEŞE BURCU","unit":"ADET"},{"id":"xlsm_39","name":"MENTEŞE PİM","unit":"ADET"},{"id":"xlsm_40","name":"DÖKÜM MENTEŞE TIRSAN TİPİ YENİ MODEL","unit":"ADET"},{"id":"xlsm_41","name":"DÖKÜM DORSE MENTEŞESİ SİLMESİ 5MM","unit":"ADET"},{"id":"xlsm_42","name":"DÖKÜM DORSE MENTEŞESİ DİŞİ","unit":"ADET"},{"id":"xlsm_43","name":"DÖKÜM DORSE MENTEŞESİ ERKEK","unit":"ADET"},{"id":"xlsm_44","name":"DÖNER TAKOZ 2'Lİ BÜYÜK","unit":"ADET"},{"id":"xlsm_45","name":"DÖNER TAKOZ LASTİĞİ BÜYÜK","unit":"ADET"},{"id":"xlsm_46","name":"DÖNER TAKOZ MİLİ BÜYÜK & KÜÇÜK","unit":"ADET"},{"id":"xlsm_47","name":"DÖNER TAKOZ 2'Lİ KÜÇÜK","unit":"ADET"},{"id":"xlsm_48","name":"DÖNER TAKOZ LASTİĞİ KÜÇÜK","unit":"ADET"},{"id":"xlsm_49","name":"GÜMRÜK KAPAĞI","unit":"ADET"},{"id":"xlsm_50","name":"GERGI MEKANIZMASI  STANDAR","unit":"ADET"},{"id":"xlsm_51","name":"GERGI MEKANIZMASI  YENI MODEL DOKUM","unit":"ADET"},{"id":"xlsm_52","name":"GERGI MEKANIZMASI ORDJİNAL","unit":"ADET"},{"id":"xlsm_53","name":"GÖMME KAPAK KİLİT T'Sİ 60 MM - 95 NMM","unit":"ADET"},{"id":"xlsm_54","name":"GÖMME KAPAK KLİDİ YENİ MODEL","unit":"ADET"},{"id":"xlsm_55","name":"GÖMME KİLİT KARŞILIĞI","unit":"ADET"},{"id":"xlsm_56","name":"YAN BARİYER TAKOZU BÜYÜK","unit":"ADET"},{"id":"xlsm_57","name":"YAN BARİYER TAKOZU","unit":"ADET"},{"id":"xlsm_58","name":"YAN BARİYER TAKOZU(TIRSAN)","unit":"ADET"},{"id":"xlsm_59","name":"GOMME KAPAK KILIDI","unit":"ADET"},{"id":"xlsm_60","name":"BABA KIRMA YERLİ (SET)","unit":"ADET"},{"id":"xlsm_61","name":"KAYAR BABA YERLİ (SET)","unit":"ADET"},{"id":"xlsm_62","name":"KAYAR BABA EĞRİSİ (DEVE BOYNU)","unit":"ADET"},{"id":"xlsm_64","name":"BABA  KAYAR ADAYKO","unit":"ADET"},{"id":"xlsm_65","name":"BABA KAYAR HESTAL","unit":"ADET"},{"id":"xlsm_66","name":"HESTAL BABA BASMA AÇMA PLASTİK PİM","unit":"ADET"},{"id":"xlsm_68","name":"REFLEKTİF KESİK  YUMUŞAK ZEMİN ŞERİT","unit":"METRE"},{"id":"xlsm_69","name":"REFLEKTİF ŞERİT SERT ZEMİN","unit":"METRE"},{"id":"xlsm_70","name":"TABAN TAHTASI 15 MM 125LİK","unit":"ADET"},{"id":"xlsm_71","name":"TABAN TAHTASI 21MM 125LİK","unit":"ADET"},{"id":"xlsm_72","name":"TABAN TAHTASI 30MM 125LİK","unit":"ADET"},{"id":"xlsm_73","name":"TABAN TAHTASI 30MM 150LİK","unit":"ADET"},{"id":"xlsm_74","name":"TABAN TAHTASI 9MM 125LİK ekşioğlı","unit":"ADET"},{"id":"xlsm_75","name":"TABAN VİDASI","unit":"ADET"},{"id":"xlsm_76","name":"TAHTA GEÇME YERİ üzün","unit":"ADET"},{"id":"xlsm_77","name":"TAHTA GEÇME YERİ (lata yatağı) kısa","unit":"ADET"},{"id":"xlsm_78","name":"TAMPON C","unit":"ADET"},{"id":"xlsm_79","name":"TAMPON KORUMAPROFİL 120*120 & BORU 120 LIK","unit":"ADET"},{"id":"xlsm_80","name":"TAMPON GENİŞ","unit":"ADET"},{"id":"xlsm_81","name":"DOLAP 150*50*60","unit":"ADET"},{"id":"xlsm_82","name":"DOLAP 150*45*45","unit":"ADET"},{"id":"xlsm_83","name":"DOLAP 150'LIK","unit":"ADET"},{"id":"xlsm_84","name":"PLASTIK TAKIM DOLABI 60 LIK","unit":"ADET"},{"id":"xlsm_85","name":"PLASTIK TAKIM DOLABI 80 LIK","unit":"ADET"},{"id":"xlsm_86","name":"DOLAP KİLİDİ TIRSAN MODEL","unit":"ADET"},{"id":"xlsm_87","name":"SU TANKI TIRSAN MODEL","unit":"ADET"},{"id":"xlsm_88","name":"SU TANKI 30 LT","unit":"ADET"},{"id":"xlsm_89","name":"SU TANKI 55 LT","unit":"ADET"},{"id":"xlsm_91","name":"KAPI TUTAMAĞI","unit":"ADET"},{"id":"xlsm_93","name":"2 BASAMAK MERDİVEN","unit":"ADET"},{"id":"xlsm_94","name":"3 BASAMAK MERDİVEN","unit":"ADET"},{"id":"xlsm_95","name":"YANGIN TÜPÜ DOLABI 6/9 KG","unit":"ADET"},{"id":"xlsm_96","name":"YANICI LEVHA","unit":"ADET"},{"id":"xlsm_97","name":"TIR REFLEKTÖR ALÜMİNYUM  KATLANIR LEVHA","unit":"ADET"},{"id":"xlsm_99","name":"REFLEKTÖR (alüminyum) KAMYON-adet","unit":"ADET"},{"id":"xlsm_101","name":"REFLEKTÖR (alüminyum) TIR-adet","unit":"ADET"},{"id":"xlsm_102","name":"ALÜ BİSİKLETLİK DAR BAŞLIK","unit":"METRE"},{"id":"xlsm_103","name":"ALÜ. BİSİKLETLİK KORKULUĞU","unit":"METRE"},{"id":"xlsm_104","name":"ALÜMİNYUM DİK KİLİT 600 & 700","unit":"ADET"},{"id":"xlsm_106","name":"ALÜ. TAHTALIK V GEÇME YAN YAPI","unit":"ADET"},{"id":"xlsm_107","name":"ALÜ. TAHTALIK YAN YAPI","unit":"ADET"},{"id":"xlsm_108","name":"ALÜ. YAĞMUR OLUĞU","unit":"ADET"},{"id":"xlsm_109","name":"SAÇ YAĞMUR OLUĞU","unit":"ADET"},{"id":"xlsm_112","name":"BABA J'Sİ","unit":"ADET"},{"id":"xlsm_113","name":"BABA MAKARASI (ÇELİK RAYI)","unit":"ADET"},{"id":"xlsm_114","name":"BABA MAKARASI  ALÜ. RAYA GÖRE","unit":"ADET"},{"id":"xlsm_115","name":"BARİYER AYAĞI  75 CM","unit":"ADET"},{"id":"xlsm_116","name":"BARİYER AYAĞI 55 CM","unit":"ADET"},{"id":"xlsm_117","name":"BORULU STEPNE YERİ","unit":"ADET"},{"id":"xlsm_118","name":"STEPNE TAŞIYICI KAMYON","unit":"ADET"},{"id":"xlsm_119","name":"BAĞLANTI SOMUNU 5*8 (UNÇ Ç. SOMON)","unit":"ADET"},{"id":"xlsm_120","name":"SİLME ÇITA ALÜMİNYUM","unit":"ADET"},{"id":"xlsm_121","name":"BORU YUVASI BÜYÜK ÇAP 27","unit":"ADET"},{"id":"xlsm_122","name":"BORU YUVASI KÜÇÜK","unit":"ADET"},{"id":"xlsm_123","name":"YAYLI KÖPRÜ","unit":"ADET"},{"id":"xlsm_124","name":"KAPAK KÖPRÜ 32MM","unit":"ADET"},{"id":"xlsm_125","name":"RAYLI ÇATI YÜZÜĞÜ","unit":"ADET"},{"id":"xlsm_127","name":"KANCA TAKIMI SİMETRİ GALVANİZ 27","unit":"ADET"},{"id":"xlsm_128","name":"KARBOSAN FLEX ÇAPAK TAŞI","unit":"ADET"},{"id":"xlsm_129","name":"KASA BAĞLANTISI 50*10","unit":"SET"},{"id":"xlsm_131","name":"KONTEYNER KİLİDİ","unit":"ADET"},{"id":"xlsm_132","name":"ALÜMİNYUM YAN KAPAK YATAY KİLİD U PROFİLİ","unit":"ADET"},{"id":"xlsm_134","name":"ELEKTROT (NORMAL)","unit":"ADET"},{"id":"xlsm_135","name":"ELEKTROT (ALÜMİNYUM)","unit":"ADET"},{"id":"xlsm_138","name":"BÜYÜK BORU YUVAS ÇAP 27","unit":"ADET"},{"id":"xlsm_139","name":"SİMETRİK KANCA TAKIMI 27","unit":"ADET"},{"id":"xlsm_140","name":"KAPI KİLİT YUVAS","unit":"ADET"},{"id":"xlsm_142","name":"GAZ KARIŞIM 12,83 M³","unit":"ADET"},{"id":"xlsm_143","name":"ARKA KAPI KİLİDİ DÖKÜM","unit":"ADET"},{"id":"xlsm_145","name":"LAMA AYAKLI MENTEŞE","unit":"ADET"},{"id":"xlsm_146","name":"D HALKA BORU TİPİ KÜÇÜK SALLAMA","unit":"ADET"},{"id":"xlsm_147","name":"PLASTİKLİ KOL TAKIM GALVANİZ 27'LİK","unit":"ADET"},{"id":"xlsm_148","name":"PLASTİKLİ KOL GALVANİZ 27'LİK","unit":"ADET"},{"id":"xlsm_150","name":"BARIYER AYAĞI KISA","unit":"ADET"},{"id":"xlsm_151","name":"BARIYER AYAĞI UZUN","unit":"ADET"},{"id":"xlsm_152","name":"ÇELİK  BÜKÜMLÜ MAKARA","unit":"ADET"},{"id":"xlsm_154","name":"MENTEŞE LAMASI","unit":"ADET"},{"id":"xlsm_155","name":"MENTEŞE PİMİ","unit":"ADET"},{"id":"xlsm_157","name":"MENTEŞE YUVASI","unit":"ADET"},{"id":"xlsm_158","name":"ÖN PANEL BÜKÜMLÜ SAC","unit":"ADET"},{"id":"xlsm_159","name":"PROFİL MUTALİF ÖLÇÜLER","unit":"METRE"},{"id":"xlsm_161","name":"NPU 100 DEMİR","unit":"METRE"},{"id":"xlsm_162","name":"NPU 80 DEMİR","unit":"METRE"},{"id":"xlsm_163","name":"NPI 80 DEMİR","unit":"METRE"},{"id":"xlsm_164","name":"40*60*3 PROFİL","unit":"METRE"},{"id":"xlsm_165","name":"30*50*3 PROFİL","unit":"METRE"},{"id":"xlsm_166","name":"30*30*2,5 PROFİL","unit":"METRE"},{"id":"xlsm_167","name":"25*40*2 PROFİL","unit":"METRE"},{"id":"xlsm_168","name":"KÖŞEBENT DEMİRİ 30'LUK","unit":"ADET"},{"id":"xlsm_170","name":"LAMA 60*10","unit":"METRE"},{"id":"xlsm_171","name":"LAMA 40*10","unit":"METRE"},{"id":"xlsm_173","name":"LAMA 80*10","unit":"METRE"},{"id":"xlsm_174","name":"LAMA 30*5","unit":"METRE"},{"id":"xlsm_175","name":"LAMA 30*10","unit":"METRE"},{"id":"xlsm_176","name":"100*100*4 PROFİL","unit":"METRE"},{"id":"xlsm_177","name":"120 LİK 4MM BORU","unit":"METRE"},{"id":"xlsm_179","name":"SAÇ 125*250*2 = 50 KG","unit":"KG"},{"id":"xlsm_180","name":"OKSİJEN GAZI 6,4 M³","unit":"ADET"},{"id":"xlsm_181","name":"OKSİJEN GAZI 8 M³","unit":"ADET"},{"id":"xlsm_182","name":"ÇAMURLUK ÇİFT TEKER","unit":"ADET"},{"id":"xlsm_183","name":"ÇAMURLUK IVECO TEK TEKER","unit":"ADET"},{"id":"xlsm_184","name":"ÇAMURLUK IVECO ÇİF TEKER","unit":"ADET"},{"id":"xlsm_185","name":"ÇAMURLUK BORUSU UZUN","unit":"ADET"},{"id":"xlsm_186","name":"ÇAMURLUK BORUSU KISA","unit":"ADET"},{"id":"xlsm_187","name":"ÇAMURLUK KELEPÇESİ","unit":"ADET"},{"id":"xlsm_188","name":"ÇAMURLUK TEK TEKER","unit":"ADET"},{"id":"xlsm_189","name":"SARI TAKOZ","unit":"ADET"},{"id":"xlsm_190","name":"YÜK BAĞLAMA HALKASI","unit":"ADET"},{"id":"xlsm_192","name":"YÜK TUTUCU ALÜMİNYUM","unit":"ADET"},{"id":"xlsm_197","name":"GERGİ BORUSU GEÇMELI ORJINAL","unit":"ADET"},{"id":"xlsm_198","name":"ALT-ÜST ADAPTÖR (KALIN BORU)","unit":"ADET"},{"id":"xlsm_199","name":"ALT-ÜST ADAPTÖR (İNCEBORU)","unit":"ADET"},{"id":"xlsm_200","name":"GERGİ BORUSU  KALIN 3MT","unit":"ADET"},{"id":"xlsm_201","name":"GERGİ BORUSU İNCE 3MT","unit":"ADET"},{"id":"xlsm_202","name":"BRANDA GERME KANCASI 3MT","unit":"ADET"},{"id":"xlsm_203","name":"BRANDA KAYIŞ","unit":"METRE"},{"id":"xlsm_204","name":"BRANDA KÖPRÜSÜ 35 MM","unit":"ADET"},{"id":"xlsm_205","name":"BRANDA KULAK","unit":"ADET"},{"id":"xlsm_206","name":"BRANDA TUTMA KOLU (KAYIŞTAN)","unit":"ADET"},{"id":"xlsm_207","name":"YAPIŞABİLİR KOLON","unit":"METRE"},{"id":"xlsm_208","name":"P KÖPRÜ","unit":"ADET"},{"id":"xlsm_209","name":"KAPSÜL OVAL","unit":"ADET"},{"id":"xlsm_210","name":"KAPSÜL YUVARLAK (TIR)","unit":"ADET"},{"id":"xlsm_211","name":"KAPSÜL 32'LİK ÇATI","unit":"ADET"},{"id":"xlsm_212","name":"TAVAN BAĞLANTI TOKASI","unit":"ADET"},{"id":"xlsm_213","name":"TEKLİ GERGİ LASİTİĞİ","unit":"ADET"},{"id":"xlsm_214","name":"S KANCA","unit":"ADET"},{"id":"xlsm_215","name":"SABİTLEME LAMASI GALVANİZ","unit":"ADET"},{"id":"xlsm_216","name":"P KANCA PLASTİK GRİ","unit":"ADET"},{"id":"xlsm_217","name":"ÇELİT HALATI, ÇATI","unit":"METRE"},{"id":"xlsm_218","name":"KOLONLU KANCA GALVANİZ (NORMAL VE e)","unit":"ADET"},{"id":"xlsm_219","name":"KOLONLU KANCA PASLANMAZ (GALVANİZ VE e)","unit":"ADET"},{"id":"xlsm_220","name":"PASLANMAZ ÇELİK TOKA KÜÇÜK","unit":"ADET"},{"id":"xlsm_221","name":"PERDE MAKARASI (EDSCHA)","unit":"ADET"},{"id":"xlsm_222","name":"FİTİL İP SİLİKON 10 ÇAP","unit":"METRE"},{"id":"xlsm_223","name":"GERGİ  PLASTİĞİ ALTI","unit":"ADET"},{"id":"xlsm_224","name":"GERGİ LASTİĞİ     [BİR BOY 15 MT]","unit":"METRE"},{"id":"xlsm_225","name":"GERGİ LASTİĞİ BAŞLIĞI","unit":"ADET"},{"id":"xlsm_226","name":"BRANDA 700 GR","unit":"M²"},{"id":"xlsm_227","name":"BRANDA 900 GR PANAMA","unit":"M²"},{"id":"xlsm_229","name":"FOLYO","unit":"M²"},{"id":"xlsm_231","name":"PERÇİN alüminyum","unit":"ADET"},{"id":"xlsm_232","name":"PERÇİN çelik","unit":"ADET"},{"id":"xlsm_233","name":"PAS SÖKÜCÜ SPREY","unit":"ADET"},{"id":"xlsm_234","name":"Silikon Dayson","unit":"ADET"},{"id":"xlsm_236","name":"FLAP ZIMPARA","unit":"ADET"},{"id":"xlsm_237","name":"KESME-TAŞLAMA TAŞI","unit":"ADET"},{"id":"xlsm_238","name":"CİVATA","unit":"ADET"},{"id":"xlsm_239","name":"KURT AĞZI [KLEMENS ]","unit":"ADET"},{"id":"xlsm_240","name":"MACUN","unit":"ADET"},{"id":"xlsm_241","name":"YARIKLI PİM","unit":"ADET"},{"id":"xlsm_242","name":"AKILLI VİDA","unit":"ADET"},{"id":"xlsm_245","name":"TIRSAN TİPİ GÖMME KİLİT","unit":"ADET"},{"id":"xlsm_246","name":"HESTEL ALT KİLİT","unit":"ADET"},{"id":"xlsm_247","name":"HESTEL ALT KİLİT KARŞILIĞI","unit":"ADET"},{"id":"xlsm_248","name":"NEVPA KAPI ALT KİLİT KARŞILIĞI","unit":"ADET"},{"id":"xlsm_249","name":"MEGA MENTEŞE TAKIM","unit":"ADET"},{"id":"xlsm_250","name":"MASKELEME BANTI","unit":"ADET"},{"id":"xlsm_251","name":"KAPI MİL PLASTİĞİ ORTA","unit":"ADET"},{"id":"xlsm_253","name":"MİL MENTEŞE","unit":"ADET"},{"id":"xlsm_254","name":"U HALKA","unit":"ADET"},{"id":"xlsm_256","name":"VERSUS ÇATI ARABASI","unit":"ADET"},{"id":"xlsm_257","name":"ÖN KEP-ŞAPKA","unit":"ADET"},{"id":"xlsm_258","name":"ÇİFTLİ LAMA","unit":"ADET"},{"id":"xlsm_259","name":"YAN KAPAK ALT PROFİL","unit":"ADET"},{"id":"xlsm_260","name":"ÇELİK RAY - ALÜ RAY - KOMBİN RAY","unit":"ADET"},{"id":"xlsm_261","name":"YAPRAK MENTEŞE","unit":"ADET"},{"id":"xlsm_262","name":"CİVATALI (ARMUT) TAKOZ BÜYÜK","unit":"ADET"},{"id":"xlsm_263","name":"CİVATALI (ARMUT) TAKOZ KÜÇÜK","unit":"ADET"},{"id":"xlsm_264","name":"DİK KİLİT SAC PROFİL 700MM","unit":"ADET"},{"id":"xlsm_265","name":"DİK KİLİT SAC PROFİL 900MM","unit":"ADET"},{"id":"xlsm_266","name":"BANT","unit":"ADET"},{"id":"xlsm_268","name":"GÜMRÜK HALATI","unit":"METRE"},{"id":"xlsm_270","name":"BOYA","unit":"KG"},{"id":"xlsm_271","name":"ASTAR","unit":"ADET"},{"id":"xlsm_272","name":"TİNER","unit":"ADET"}];
 
     function todayISO() {
       const d = new Date();
@@ -895,6 +1008,25 @@
       }
     }
 
+    function isQuoteArchived(quote) {
+      return !!(quote.archivedAt || quote.linkedJobId || quote.status === 'rejected' || quote.status === 'not_arrived');
+    }
+
+    async function archiveQuote(id, restore) {
+      if (!quotesDb) return;
+      const quote = findQuote(id);
+      if (!quote || quote.linkedJobId) return;
+      const updates = { archivedAt: restore ? null : Date.now(), updatedAt: Date.now() };
+      if (restore && (quote.status === 'rejected' || quote.status === 'not_arrived')) {
+        const historyKey = quotesDb.child(id).child('statusHistory').push().key;
+        updates.status = 'pending';
+        updates.statusChangedAt = Date.now();
+        updates['statusHistory/' + historyKey] = { from: quote.status, to: 'pending', at: Date.now() };
+      }
+      try { await quotesDb.child(id).update(updates); }
+      catch (e) { alert('Teklif arşivi güncellenemedi.'); }
+    }
+
     async function convertQuote(id) {
       if (!rootDb || !quotesDb || !db) return;
       const quote = findQuote(id);
@@ -909,6 +1041,7 @@
         plate: quote.plate, firm: quote.firm, receipt: '-', task: quote.task,
         price: total.toFixed(2) + (quote.currency === 'EUR' ? ' € (KDV Dahil)' : ' ₺ (KDV Dahil)'),
         basePrice: quote.basePrice, currency: quote.currency, status: 0,
+        materials: defaultMaterialsForTask(quote.task),
         laborTimeMs: 0, lastStartTimeMs: null, sourceQuoteId: id,
         history: { waiting: currentTime, inProgress: '-', finished: '-' }
       };
@@ -959,26 +1092,26 @@
       doc.save(`TOKS_TEKLIF_${safeFirm}_${quote.quoteDate || todayISO()}.pdf`);
     }
 
-    function renderQuotes() {
-      const list = document.getElementById('quoteList');
-      const message = document.getElementById('quoteMessage');
+    function renderQuotes(archived = false) {
+      const list = document.getElementById(archived ? 'archiveQuoteList' : 'quoteList');
+      const message = document.getElementById(archived ? 'archiveQuoteMessage' : 'quoteMessage');
       if (quotesError || !quotesLoaded) {
         message.textContent = quotesError || 'Teklifler yükleniyor...';
         list.innerHTML = '';
         return;
       }
-      const search = document.getElementById('quoteSearch').value.trim().toLocaleUpperCase('tr-TR');
-      const filter = document.getElementById('quoteFilter').value;
+      const search = document.getElementById(archived ? 'archiveQuoteSearch' : 'quoteSearch').value.trim().toLocaleUpperCase('tr-TR');
+      const filter = document.getElementById(archived ? 'archiveQuoteFilter' : 'quoteFilter').value;
       const today = todayISO();
       const selected = quotes.filter(quote =>
-        (filter === 'all' || quote.status === filter) &&
+        isQuoteArchived(quote) === archived && (filter === 'all' || quote.status === filter) &&
         (!search || [quote.firm, quote.plate, quote.task, quote.contact, quote.phone].some(value => String(value || '').toLocaleUpperCase('tr-TR').includes(search)))
       ).sort((a, b) => {
         const aDue = a.status === 'pending' && a.followUpDate ? a.followUpDate : '9999-12-31';
         const bDue = b.status === 'pending' && b.followUpDate ? b.followUpDate : '9999-12-31';
         return aDue.localeCompare(bDue) || String(b.quoteDate || '').localeCompare(String(a.quoteDate || '')) || Number(b.createdAt || 0) - Number(a.createdAt || 0);
       });
-      const overdue = quotes.filter(quote => quote.status === 'pending' && quote.followUpDate && quote.followUpDate < today).length;
+      const overdue = archived ? 0 : quotes.filter(quote => !isQuoteArchived(quote) && quote.status === 'pending' && quote.followUpDate && quote.followUpDate < today).length;
       message.textContent = `${selected.length} teklif gösteriliyor${overdue ? ' • ' + overdue + ' teklifin arama tarihi geçti' : ''}.`;
       if (!selected.length) { list.innerHTML = '<div class="quote-empty">Bu filtrede teklif bulunmuyor.</div>'; return; }
       list.innerHTML = selected.map(quote => {
@@ -1017,6 +1150,7 @@
             <div class="quote-status-grid" role="group" aria-label="Teklif durumu">${statusButtons}</div>
             <div class="quote-actions">
               <button data-qact="edit" data-id="${id}">DÜZENLE</button>
+              <button data-qact="${archived ? 'restore' : 'archive'}" data-id="${id}">${archived ? 'YENİDEN AÇ' : 'ARŞİVLE'}</button>
               ${status === 'accepted' ? `<button data-qact="convert" data-id="${id}" style="border-color:var(--green); color:var(--green);">İŞE ÇEVİR</button>` : ''}
             </div>
           </div>`}
@@ -1056,6 +1190,199 @@
         (missingRate ? `<div class="budget-warn">${missingRate} teklifin kuru veya tutarı eksik; TL toplamına katılmadı.</div>` : '');
       const rows = Object.entries(lostByFirm).sort((a,b) => b[1].amount - a[1].amount);
       firms.innerHTML = rows.length ? rows.map(([firm, item]) => `<div class="budget-row"><span>${esc(firm)} (${item.count})</span><span style="color:var(--red); font-weight:bold;">${esc(money(item.amount, 'TRY'))}</span></div>`).join('') : '<div class="quote-empty">Henüz kayıp olarak kapatılmış teklif yok.</div>';
+    }
+
+    // --- MALZEME VE STOK ---
+    function allMaterials() {
+      const byId = new Map(STOCK_CATALOG.map(item => [item.id, item]));
+      for (const [id, item] of Object.entries(inventory)) {
+        if (item && item.name && item.unit) byId.set(id, { id, name: item.name, unit: item.unit });
+      }
+      return [...byId.values()];
+    }
+
+    function materialMeta(id) {
+      return allMaterials().find(item => item.id === id) || { id, name: id, unit: 'ADET' };
+    }
+
+    function quantityLabel(qty) {
+      return Number(qty).toLocaleString('tr-TR', { maximumFractionDigits: 3 });
+    }
+
+    function defaultMaterialsForTask(task) {
+      const normalized = String(task || '').toLocaleUpperCase('tr-TR');
+      return normalized.includes('ÇATI BRANDA DEĞİŞİM')
+        ? { xlsm_211: 40, xlsm_232: 40 }
+        : {};
+    }
+
+    function usedMaterialTotals() {
+      const used = {};
+      for (const job of jobs) {
+        if (!job || !job.materialsBookedAt || job.cancelledAt || job.deletedAt) continue;
+        for (const [id, value] of Object.entries(job.materials || {})) {
+          const qty = Number(value);
+          if (Number.isFinite(qty) && qty > 0) used[id] = (used[id] || 0) + qty;
+        }
+      }
+      return used;
+    }
+
+    function stockNumbers(id, used = usedMaterialTotals()) {
+      const record = inventory[id] || {};
+      const opening = typeof record.openingQty === 'number' && Number.isFinite(record.openingQty) ? record.openingQty : null;
+      const received = Object.values(record.receipts || {}).reduce((sum, entry) => {
+        const qty = Number(entry && entry.qty);
+        return sum + (Number.isFinite(qty) && qty > 0 ? qty : 0);
+      }, 0);
+      const spent = used[id] || 0;
+      return { opening, received, used: spent, balance: opening === null ? null : opening + received - spent };
+    }
+
+    function jobMaterialsMarkup(job) {
+      const entries = Object.entries(job.materials || {}).filter(([,qty]) => Number(qty) > 0);
+      if (!entries.length) return '';
+      return `<div class="timeline"><div style="color:var(--toks-yellow); font-weight:bold;">${job.cancelledAt || job.deletedAt ? 'STOĞA GERİ ALINAN MALZEME' : job.materialsBookedAt ? 'KULLANILAN MALZEME' : 'PLANLANAN MALZEME'}</div>${entries.map(([id,qty]) => {
+        const meta = materialMeta(id);
+        return `<div class="material-line"><span>${esc(meta.name)}</span><strong>${esc(quantityLabel(qty))} ${esc(meta.unit)}</strong></div>`;
+      }).join('')}</div>`;
+    }
+
+    function renderStock() {
+      const list = document.getElementById('stockList');
+      const message = document.getElementById('stockMessage');
+      if (!inventoryLoaded || inventoryError) {
+        message.textContent = inventoryError || 'Stok verileri yükleniyor...';
+        list.innerHTML = '';
+        return;
+      }
+      const query = document.getElementById('stockSearch').value.trim().toLocaleUpperCase('tr-TR');
+      const used = usedMaterialTotals();
+      const defaults = new Set(['basic_branda_tokasi','xlsm_211','xlsm_232']);
+      const matches = allMaterials().filter(item => query
+        ? item.name.toLocaleUpperCase('tr-TR').includes(query)
+        : defaults.has(item.id) || Object.prototype.hasOwnProperty.call(inventory, item.id) || !!used[item.id]);
+      matches.sort((a,b) => a.name.localeCompare(b.name, 'tr'));
+      message.textContent = `${matches.length} malzeme${matches.length > 60 ? ' bulundu; ilk 60 gösteriliyor, aramayı daraltın' : ' gösteriliyor'}. Açılış stoğu girilmemiş malzemede kalan miktar hesaplanmaz.`;
+      list.innerHTML = matches.slice(0,60).map(item => {
+        const id = esc(item.id);
+        const numbers = stockNumbers(item.id, used);
+        const balance = numbers.balance === null ? 'AÇILIŞ STOĞU GİRİLMEDİ' : `${quantityLabel(numbers.balance)} ${item.unit}`;
+        const record = inventory[item.id] || {};
+        const openings = Object.values(record.openingHistory || {}).sort((a,b) => Number(b.at || 0) - Number(a.at || 0));
+        const receipts = Object.values(record.receipts || {}).sort((a,b) => Number(b.at || 0) - Number(a.at || 0));
+        const jobUses = jobs.filter(job => job && job.materialsBookedAt && !job.cancelledAt && !job.deletedAt && Number((job.materials || {})[item.id]) > 0)
+          .sort((a,b) => Number(b.materialsBookedAt || 0) - Number(a.materialsBookedAt || 0));
+        const movements = openings.slice(0,5).map(entry => `<div class="material-line"><span>${esc(showMoment(entry.at))} • açılış/düzeltme</span><strong>${esc(quantityLabel(entry.to))}</strong></div>`).join('')
+          + receipts.slice(0,10).map(entry => `<div class="material-line"><span>${esc(showMoment(entry.at))} • stok girişi</span><strong>+${esc(quantityLabel(entry.qty))}</strong></div>`).join('')
+          + jobUses.slice(0,10).map(job => `<div class="material-line"><span>${esc(job.plate || '-')} • ${esc(job.task || '-')}</span><strong>−${esc(quantityLabel(job.materials[item.id]))}</strong></div>`).join('');
+        return `<div class="stock-card" data-stock-id="${id}">
+          <h3>${esc(item.name)}</h3>
+          <div class="form-note">Birim: ${esc(item.unit)}</div>
+          <div class="budget-row"><span>Açılış + giriş</span><strong>${numbers.opening === null ? '?' : esc(quantityLabel(numbers.opening))} + ${esc(quantityLabel(numbers.received))}</strong></div>
+          <div class="budget-row"><span>İşlerde kullanıldı</span><strong>${esc(quantityLabel(numbers.used))} ${esc(item.unit)}</strong></div>
+          <div class="budget-row"><span>Kalan</span><strong class="${numbers.balance !== null && numbers.balance < 0 ? 'stock-negative' : 'stock-positive'}">${esc(balance)}</strong></div>
+          <div class="input-row"><input type="text" inputmode="decimal" data-stock-opening placeholder="AÇILIŞ / DÜZELTME" value="${numbers.opening === null ? '' : esc(numbers.opening)}"><button data-stock-act="opening" data-id="${id}">STOĞU KAYDET</button></div>
+          <div class="input-row"><input type="text" inputmode="decimal" data-stock-receipt placeholder="GELEN MİKTAR"><button data-stock-act="receipt" data-id="${id}">STOK GİRİŞİ</button></div>
+          ${movements ? `<details class="form-note"><summary>Hareketler • ${receipts.length} giriş, ${jobUses.length} iş</summary>${movements}${openings.length > 5 || receipts.length > 10 || jobUses.length > 10 ? '<div>En son hareketler gösteriliyor.</div>' : ''}</details>` : ''}
+        </div>`;
+      }).join('') || '<div class="quote-empty">Malzeme bulunamadı. Aşağıdan yeni malzeme ekleyebilirsin.</div>';
+    }
+
+    async function saveStockOpening(id, value) {
+      if (!inventoryDb || !inventoryLoaded) return;
+      const qty = parseDecimalInput(value);
+      if (!Number.isFinite(qty) || qty < 0 || qty > 1000000000) { alert('Geçerli bir stok miktarı girin.'); return; }
+      const item = materialMeta(id);
+      const historyKey = inventoryDb.child(id).child('openingHistory').push().key;
+      try {
+        await inventoryDb.child(id).update({ name: item.name, unit: item.unit, openingQty: qty, updatedAt: Date.now(),
+          ['openingHistory/' + historyKey]: { from: inventory[id] && typeof inventory[id].openingQty === 'number' ? inventory[id].openingQty : null, to: qty, at: Date.now() } });
+      } catch (e) { alert('Açılış stoğu kaydedilemedi.'); }
+    }
+
+    async function addStockReceipt(id, value) {
+      if (!inventoryDb || !inventoryLoaded) return;
+      const qty = parseDecimalInput(value);
+      if (!Number.isFinite(qty) || qty <= 0 || qty > 1000000000) { alert('Geçerli bir gelen miktar girin.'); return; }
+      const item = materialMeta(id);
+      const key = inventoryDb.child(id).child('receipts').push().key;
+      try {
+        await inventoryDb.child(id).update({ name: item.name, unit: item.unit, updatedAt: Date.now(), ['receipts/' + key]: { qty, at: Date.now() } });
+      } catch (e) { alert('Stok girişi kaydedilemedi.'); }
+    }
+
+    async function addCustomMaterial() {
+      if (!inventoryDb || !inventoryLoaded) return;
+      const name = document.getElementById('stockCustomName').value.trim().toLocaleUpperCase('tr-TR');
+      const unit = document.getElementById('stockCustomUnit').value;
+      if (!name || name.length > 100) { alert('Malzeme adı gerekli.'); return; }
+      if (allMaterials().some(item => item.name.toLocaleUpperCase('tr-TR') === name)) { alert('Bu malzeme zaten listede. Arama alanından bulabilirsin.'); return; }
+      try {
+        await inventoryDb.push({ name, unit, createdAt: Date.now() });
+        document.getElementById('stockCustomName').value = '';
+        document.getElementById('stockSearch').value = name;
+        renderStock();
+      } catch (e) { alert('Malzeme eklenemedi.'); }
+    }
+
+    function refreshMaterialOptions() {
+      document.getElementById('materialNameOptions').innerHTML = allMaterials()
+        .map(item => `<option value="${esc(item.name)}"></option>`).join('');
+    }
+
+    function openMaterialDialog(id) {
+      const job = findJob(id);
+      if (!job || job.cancelledAt || job.deletedAt) return;
+      editingMaterialsJobId = id;
+      draftJobMaterials = { ...(job.materials || {}) };
+      if (!Object.keys(draftJobMaterials).length && !job.materialsBookedAt) draftJobMaterials = defaultMaterialsForTask(job.task);
+      document.getElementById('materialJobInfo').textContent = `${job.plate || '-'} • ${job.task || '-'} • ${job.materialsBookedAt ? 'Kullanım stoktan düşmüş' : 'İş bitince stoktan düşecek'}`;
+      document.getElementById('materialNameInput').value = '';
+      document.getElementById('materialQtyInput').value = '';
+      refreshMaterialOptions();
+      renderDraftJobMaterials();
+      document.getElementById('materialOverlay').style.display = 'block';
+    }
+
+    function closeMaterialDialog() {
+      editingMaterialsJobId = null;
+      draftJobMaterials = {};
+      const overlay = document.getElementById('materialOverlay');
+      if (overlay) overlay.style.display = 'none';
+    }
+
+    function renderDraftJobMaterials() {
+      const entries = Object.entries(draftJobMaterials);
+      document.getElementById('materialDraftList').innerHTML = entries.length ? entries.map(([id,qty]) => {
+        const item = materialMeta(id);
+        return `<div class="material-line"><span>${esc(item.name)}</span><strong>${esc(quantityLabel(qty))} ${esc(item.unit)}</strong><button class="s-btn" style="flex:none; padding:5px 8px;" data-material-remove="${esc(id)}">ÇIKAR</button></div>`;
+      }).join('') : '<div class="quote-empty">Henüz malzeme seçilmedi.</div>';
+    }
+
+    function addDraftJobMaterial() {
+      const name = document.getElementById('materialNameInput').value.trim().toLocaleUpperCase('tr-TR');
+      const qty = parseDecimalInput(document.getElementById('materialQtyInput').value);
+      const item = allMaterials().find(entry => entry.name.toLocaleUpperCase('tr-TR') === name);
+      if (!item) { alert('Malzemeyi listeden seçin veya STOK ekranından yeni malzeme ekleyin.'); return; }
+      if (!Number.isFinite(qty) || qty <= 0 || qty > 1000000) { alert('Geçerli bir miktar girin.'); return; }
+      draftJobMaterials[item.id] = (draftJobMaterials[item.id] || 0) + qty;
+      document.getElementById('materialNameInput').value = '';
+      document.getElementById('materialQtyInput').value = '';
+      renderDraftJobMaterials();
+    }
+
+    async function saveJobMaterials() {
+      if (!db || !editingMaterialsJobId) return;
+      const job = findJob(editingMaterialsJobId);
+      if (!job || job.cancelledAt || job.deletedAt) return;
+      const button = document.getElementById('materialSaveBtn');
+      button.disabled = true;
+      const payload = { materials: draftJobMaterials };
+      if (!job.materialsBookedAt && (job.status === 2 || job.status === 3)) payload.materialsBookedAt = Date.now();
+      try { await db.child(editingMaterialsJobId).update(payload); closeMaterialDialog(); }
+      catch (e) { alert('Malzeme kullanımı kaydedilemedi.'); }
+      finally { button.disabled = false; }
     }
 
     // --- DÜZENLEME VE KAYIT SİSTEMİ ---
@@ -1112,16 +1439,20 @@
       }
 
       if (editingId) {
+        const existing = findJob(editingId);
+        const materials = existing && Object.prototype.hasOwnProperty.call(existing, 'materials') ? existing.materials
+          : existing && !existing.materialsBookedAt && existing.status !== 2 && existing.status !== 3 ? defaultMaterialsForTask(task) : {};
         // Sadece bu kaydın ilgili alanları yazılır; diğer kayıtlara dokunulmaz.
         // basePrice/currency de yazilir: bir sonraki duzenlemede tutar yeniden
         // turetilmez, boylece KDV yuvarlamasi tutari kaydirmaz.
-        db.child(editingId).update({ plate, firm, receipt, task, price: finalPrice, basePrice, currency: curr })
+        db.child(editingId).update({ plate, firm, receipt, task, price: finalPrice, basePrice, currency: curr, materials })
           .catch(() => alert("Kayıt güncellenemedi."));
         cancelEdit();
       } else {
         const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
         db.push({
           plate, firm, receipt, task, price: finalPrice, basePrice, currency: curr, status: 0,
+          materials: defaultMaterialsForTask(task),
           laborTimeMs: 0, lastStartTimeMs: null,
           history: { waiting: currentTime, inProgress: '-', finished: '-' }
         }).catch(() => alert("Kayıt eklenemedi."));
@@ -1136,7 +1467,17 @@
       if (!job) return;
 
       const oldStatus = job.status;
-      if (oldStatus === newStatus) return; // Aynı butona basarsa hiçbir şey yapma
+      if (oldStatus === newStatus && !job.cancelledAt && !job.deletedAt) return; // İptal/silinen iş aynı durumdan geri alınabilir.
+
+      if (newStatus === 2 && !job.materialsBookedAt) {
+        const entries = Object.entries(job.materials || {}).filter(([,qty]) => Number(qty) > 0);
+        if (!entries.length && !confirm('Bu işte malzeme seçilmedi. Yine de işi bitirmek istiyor musun?')) return;
+        const shortages = entries.filter(([id,qty]) => {
+          const stock = stockNumbers(id);
+          return stock.balance !== null && stock.balance < Number(qty);
+        }).map(([id]) => materialMeta(id).name);
+        if (shortages.length && !confirm(`Stok eksiye düşecek: ${shortages.join(', ')}. Yine de işi bitirmek istiyor musun?`)) return;
+      }
 
       const currentTime = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
       const currentMs = Date.now();
@@ -1174,6 +1515,11 @@
         lastStartTimeMs: lastStartTimeMs,
         history: history
       };
+      if (newStatus === 2 && !job.materialsBookedAt) payload.materialsBookedAt = Date.now();
+      if (newStatus === 0) {
+        if (job.cancelledAt) payload.cancelledAt = null;
+        if (job.deletedAt) payload.deletedAt = null;
+      }
 
       // Kur mühürleme: yalnızca euro fiyatlı işlerde ve GEÇERLİ bir kur varken.
       const needsRate = (newStatus === 2) || (newStatus === 3 && !job.euroRateAtFinish);
@@ -1191,9 +1537,19 @@
 
     function deleteJob(id) {
       if (!db) return;
-      if (!confirm("Bu kaydı silmek istediğine emin misin?")) return;
-      db.child(id).remove().catch(() => alert("Kayıt silinemedi."));
+      const job = findJob(id);
+      if (!job || job.deletedAt) return;
+      if (!confirm("Bu işi Silinen İşler bölümüne taşımak istiyor musun? Kullanılmış malzemeler stok hesabına geri döner.")) return;
+      db.child(id).update({ deletedAt: Date.now() }).catch(() => alert("Kayıt silinemedi."));
       closeModal();
+    }
+
+    function cancelJob(id) {
+      if (!db) return;
+      const job = findJob(id);
+      if (!job || job.cancelledAt || job.deletedAt) return;
+      if (!confirm('Bu işi iptal etmek istiyor musun? Kullanılan malzemeler stok hesabına geri döner; iş İptal Edilen İşler arşivinde kalır.')) return;
+      db.child(id).update({ cancelledAt: Date.now() }).catch(() => alert('İş iptal edilemedi.'));
     }
 
     // --- PDF OLUŞTURUCU ---
@@ -1240,6 +1596,8 @@
       switch (el.dataset.act) {
         case 'status': updateStatus(id, parseInt(el.dataset.status, 10)); break;
         case 'edit':   editJob(id); break;
+        case 'materials': openMaterialDialog(id); break;
+        case 'cancel': cancelJob(id); break;
         case 'delete': deleteJob(id); break;
         case 'pdf':    generatePDF(id); break;
       }
@@ -1256,26 +1614,58 @@
     document.getElementById('tab-active').addEventListener('click', () => switchTab('active'));
     document.getElementById('tab-quotes').addEventListener('click', () => switchTab('quotes'));
     document.getElementById('tab-archive').addEventListener('click', () => switchTab('archive'));
+    document.getElementById('tab-stock').addEventListener('click', () => switchTab('stock'));
     document.getElementById('tab-budget').addEventListener('click', () => switchTab('budget'));
+    document.getElementById('archiveJobsTab').addEventListener('click', () => switchArchiveMode('jobs'));
+    document.getElementById('archiveQuotesTab').addEventListener('click', () => switchArchiveMode('quotes'));
     document.getElementById('budgetJobsTab').addEventListener('click', () => switchBudgetMode('jobs'));
     document.getElementById('budgetQuotesTab').addEventListener('click', () => switchBudgetMode('quotes'));
 
     document.getElementById('quoteSaveBtn').addEventListener('click', saveQuote);
     document.getElementById('quoteCancelBtn').addEventListener('click', resetQuoteForm);
     document.getElementById('quoteCurrency').addEventListener('change', updateQuoteCurrency);
-    document.getElementById('quoteSearch').addEventListener('input', renderQuotes);
-    document.getElementById('quoteFilter').addEventListener('change', renderQuotes);
-    document.getElementById('quoteList').addEventListener('click', e => {
+    document.getElementById('quoteSearch').addEventListener('input', () => renderQuotes(false));
+    document.getElementById('quoteFilter').addEventListener('change', () => renderQuotes(false));
+    document.getElementById('archiveQuoteSearch').addEventListener('input', () => renderQuotes(true));
+    document.getElementById('archiveQuoteFilter').addEventListener('change', () => renderQuotes(true));
+    function handleQuoteAction(e) {
       const button = e.target.closest('[data-qact]');
       if (!button) return;
       const id = button.dataset.id;
       if (button.dataset.qact === 'edit') editQuote(id);
       else if (button.dataset.qact === 'convert') convertQuote(id);
       else if (button.dataset.qact === 'pdf') generateQuotePDF(id);
+      else if (button.dataset.qact === 'archive') archiveQuote(id, false);
+      else if (button.dataset.qact === 'restore') archiveQuote(id, true);
       else if (button.dataset.qact === 'status') {
         button.disabled = true;
         setQuoteStatus(id, button.dataset.status).finally(() => { button.disabled = false; });
       }
+    }
+    document.getElementById('quoteList').addEventListener('click', handleQuoteAction);
+    document.getElementById('archiveQuoteList').addEventListener('click', handleQuoteAction);
+
+    document.getElementById('stockSearch').addEventListener('input', renderStock);
+    document.getElementById('stockCustomAddBtn').addEventListener('click', addCustomMaterial);
+    document.getElementById('stockList').addEventListener('click', e => {
+      const button = e.target.closest('[data-stock-act]');
+      if (!button) return;
+      const card = button.closest('[data-stock-id]');
+      const selector = button.dataset.stockAct === 'opening' ? '[data-stock-opening]' : '[data-stock-receipt]';
+      const input = card && card.querySelector(selector);
+      if (!input) return;
+      button.disabled = true;
+      const action = button.dataset.stockAct === 'opening' ? saveStockOpening : addStockReceipt;
+      action(button.dataset.id, input.value).finally(() => { button.disabled = false; });
+    });
+    document.getElementById('materialCloseBtn').addEventListener('click', closeMaterialDialog);
+    document.getElementById('materialAddBtn').addEventListener('click', addDraftJobMaterial);
+    document.getElementById('materialSaveBtn').addEventListener('click', saveJobMaterials);
+    document.getElementById('materialDraftList').addEventListener('click', e => {
+      const button = e.target.closest('[data-material-remove]');
+      if (!button) return;
+      delete draftJobMaterials[button.dataset.materialRemove];
+      renderDraftJobMaterials();
     });
 
     document.getElementById('saveBtn').addEventListener('click', saveJob);
