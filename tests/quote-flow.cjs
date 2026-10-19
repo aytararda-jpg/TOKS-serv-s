@@ -3,7 +3,7 @@ const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const firebaseRules=JSON.parse(fs.readFileSync(path.join(__dirname,'..','firebase-rules.json'),'utf8')).rules;
 const script=html.slice(html.lastIndexOf('<script>')+8,html.lastIndexOf('</script>'));
 const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]);
-const elements=Object.fromEntries(ids.map(id=>[id,{id,value:'',innerHTML:'',innerText:'',textContent:'',style:{},disabled:false,classList:{toggle(){}},addEventListener(){},getContext(){return {}},focus(){}}]));
+const elements=Object.fromEntries(ids.map(id=>[id,{id,value:'',checked:false,innerHTML:'',innerText:'',textContent:'',style:{},disabled:false,classList:{toggle(){}},addEventListener(){},querySelectorAll(){return []},getContext(){return {}},focus(){}}]));
 const data={toks_jobs:{old:{firm:'SERVİS FİRMA',plate:'34 OLD',task:'TAMİR',price:'1000.00 ₺ (KDV Dahil)',currency:'TRY',status:3,history:{finished:'01.10.2026'}}},toks_inventory:{},toks_quotes:{
  q1:{firm:'DENEME FİRMA',plate:'34 TEST 01',task:'BRANDA',basePrice:1000,currency:'TRY',quoteDate:'2026-10-12',followUpDate:'2026-10-13',status:'pending',createdAt:1},
  q2:{firm:'BAŞKA FİRMA',plate:'35 TEST 02',task:'YENİ BRANDA',basePrice:500,currency:'EUR',exchangeRateAtQuote:50,quoteDate:'2026-10-11',followUpDate:'',status:'rejected',createdAt:2},
@@ -130,7 +130,23 @@ const run=s=>vm.runInContext(s,context);
  assert.match(elements.stockList.innerHTML,/BRANDA TOKASI/);
  assert.match(elements.stockList.innerHTML,/EDSCHA ARABA/);
  assert.match(elements.stockList.innerHTML,/TİNER/);
+ assert.doesNotMatch(elements.stockList.innerHTML,/100\*100\*4 PROFİL/);
+ assert.match(elements.stockMessage.textContent,/profil gizli/);
+ elements.stockSearch.value='PROFİL';
+ run('renderStock()');
+ assert.match(elements.stockList.innerHTML,/100\*100\*4 PROFİL/);
+ elements.stockSearch.value='';
+ elements.stockShowProfiles.checked=true;
+ run('renderStock()');
  assert.match(elements.stockMessage.textContent,/231 malzeme gösteriliyor/);
+ await run('saveStockOpening("basic_branda_tokasi","100")');
+ assert.equal(run('stockNumbers("basic_branda_tokasi").balance'),100);
+ assert.match(elements.stockList.innerHTML,/YANLIŞ SAYIMI GERİ AL/);
+ await run('clearStockOpening("basic_branda_tokasi")');
+ assert.equal(run('stockNumbers("basic_branda_tokasi").balance'),null);
+ assert.equal(data.toks_inventory.basic_branda_tokasi.openingQty,undefined);
+ assert.ok(Object.values(data.toks_inventory.basic_branda_tokasi.openingHistory).some(entry=>entry.action==='clear' && entry.from===100));
+ assert.match(elements.stockList.innerHTML,/100 → SAYIM YOK/);
  assert.deepEqual(alerts,[]);
  console.log('PASS: quote archive, stock receipt, roof defaults, finish/cancel/delete/restore, quote conversion');
 })().catch(e=>{console.error(e);process.exitCode=1});

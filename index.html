@@ -111,13 +111,25 @@
     .quote-empty { color:#94a3b8; font-size:0.85rem; padding:15px; border:1px dashed var(--border); border-radius:6px; }
     .material-line { display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid #1e293b; font-size:0.74rem; }
     .material-line:last-child { border-bottom:none; }
-    .stock-card { background:var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:12px; }
-    .stock-card h3 { color:var(--toks-yellow); font-size:0.9rem; margin-bottom:8px; }
-    .stock-card .input-row { margin-top:9px; }
-    .stock-card .input-row input { min-width:0; }
-    .stock-card button { background:#0f172a; color:#fff; border:1px solid var(--toks-yellow); border-radius:4px; padding:8px; cursor:pointer; font-weight:bold; }
+    .stock-list { display:flex; flex-direction:column; gap:6px; }
+    .stock-row { background:var(--card-bg); border:1px solid var(--border); border-radius:6px; }
+    .stock-row[open] { border-color:var(--toks-yellow); }
+    .stock-row > summary { display:flex; align-items:center; gap:10px; padding:11px 12px; cursor:pointer; list-style:none; }
+    .stock-row > summary::-webkit-details-marker { display:none; }
+    .stock-row > summary::before { content:'▸'; color:var(--toks-yellow); }
+    .stock-row[open] > summary::before { content:'▾'; }
+    .stock-name { flex:1; color:var(--toks-yellow); font-size:0.82rem; font-weight:bold; }
+    .stock-balance { text-align:right; font-size:0.73rem; font-weight:bold; }
+    .stock-row-body { border-top:1px solid var(--border); padding:10px 12px 12px; }
+    .stock-row .input-row { margin-top:9px; }
+    .stock-row .input-row input { min-width:0; }
+    .stock-row button { background:#0f172a; color:#fff; border:1px solid var(--toks-yellow); border-radius:4px; padding:8px; cursor:pointer; font-weight:bold; }
+    .stock-row .stock-clear-btn { border-color:var(--orange); color:var(--orange); width:100%; }
+    .stock-profile-toggle { display:flex; align-items:center; gap:8px; color:#cbd5e1; font-size:0.75rem; margin:10px 0; cursor:pointer; }
+    .stock-profile-toggle input { width:auto; }
     .stock-negative { color:var(--red); }
     .stock-positive { color:var(--green); }
+    .stock-unknown { color:#94a3b8; }
     .material-overlay { display:none; position:fixed; inset:0; z-index:110; background:rgba(0,0,0,.85); padding:15px; overflow:auto; }
     .material-dialog { max-width:620px; margin:45px auto; background:#0a1420; border:2px solid var(--toks-yellow); border-radius:8px; padding:16px; }
     .material-dialog .input-row input:first-child { flex:3; }
@@ -286,9 +298,10 @@
       <div class="modal-title">MALZEME STOK TAKİBİ</div>
       <div class="form-note">Fiyat listesinden malzeme adları ve birimleri alındı; satış fiyatları kullanılmaz. Kullanım iş bitince düşer. İptal veya silme stoku geri getirir.</div>
       <input type="search" id="stockSearch" placeholder="MALZEME ARA (ÖRN. BRANDA TOKASI)">
+      <label class="stock-profile-toggle"><input type="checkbox" id="stockShowProfiles"> PROFİLLERİ GÖSTER</label>
       <div id="stockMessage" class="form-note"></div>
     </div>
-    <div class="grid-container" id="stockList"></div>
+    <div class="stock-list" id="stockList"></div>
     <div class="input-panel" style="margin-top:15px;">
       <div class="modal-title">LİSTEDE OLMAYAN MALZEME</div>
       <div class="input-row">
@@ -1201,6 +1214,10 @@
       return [...byId.values()];
     }
 
+    function isProfileMaterial(item) {
+      return String(item.name || '').toLocaleUpperCase('tr-TR').includes('PROFİL');
+    }
+
     function materialMeta(id) {
       return allMaterials().find(item => item.id === id) || { id, name: id, unit: 'ADET' };
     }
@@ -1257,33 +1274,40 @@
         return;
       }
       const query = document.getElementById('stockSearch').value.trim().toLocaleUpperCase('tr-TR');
+      const showProfiles = document.getElementById('stockShowProfiles').checked;
       const used = usedMaterialTotals();
-      const matches = allMaterials().filter(item =>
-        !query || item.name.toLocaleUpperCase('tr-TR').includes(query));
+      const materials = allMaterials();
+      const hiddenProfiles = !showProfiles && !query ? materials.filter(isProfileMaterial).length : 0;
+      const matches = materials.filter(item => query
+        ? item.name.toLocaleUpperCase('tr-TR').includes(query)
+        : showProfiles || !isProfileMaterial(item));
+      const expandedIds = new Set([...list.querySelectorAll('.stock-row[open]')].map(row => row.dataset.stockId));
       matches.sort((a,b) => a.name.localeCompare(b.name, 'tr'));
-      message.textContent = `${matches.length} malzeme gösteriliyor. Açılış stoğu girilmemiş malzemede kalan miktar hesaplanmaz.`;
+      message.textContent = `${matches.length} malzeme gösteriliyor${hiddenProfiles ? ` · ${hiddenProfiles} profil gizli` : ''}. Satıra dokunup stok sayımını veya girişini düzenleyebilirsin.`;
       list.innerHTML = matches.map(item => {
         const id = esc(item.id);
         const numbers = stockNumbers(item.id, used);
-        const balance = numbers.balance === null ? 'AÇILIŞ STOĞU GİRİLMEDİ' : `${quantityLabel(numbers.balance)} ${item.unit}`;
+        const balance = numbers.balance === null ? 'SAYIM YOK' : `${quantityLabel(numbers.balance)} ${item.unit}`;
         const record = inventory[item.id] || {};
         const openings = Object.values(record.openingHistory || {}).sort((a,b) => Number(b.at || 0) - Number(a.at || 0));
         const receipts = Object.values(record.receipts || {}).sort((a,b) => Number(b.at || 0) - Number(a.at || 0));
         const jobUses = jobs.filter(job => job && job.materialsBookedAt && !job.cancelledAt && !job.deletedAt && Number((job.materials || {})[item.id]) > 0)
           .sort((a,b) => Number(b.materialsBookedAt || 0) - Number(a.materialsBookedAt || 0));
-        const movements = openings.slice(0,5).map(entry => `<div class="material-line"><span>${esc(showMoment(entry.at))} • açılış/düzeltme</span><strong>${esc(quantityLabel(entry.to))}</strong></div>`).join('')
+        const movements = openings.slice(0,5).map(entry => `<div class="material-line"><span>${esc(showMoment(entry.at))} • ${entry.action === 'clear' ? 'sayım geri alındı' : 'sayım/düzeltme'}</span><strong>${entry.action === 'clear' ? `${esc(quantityLabel(entry.from))} → SAYIM YOK` : esc(quantityLabel(entry.to))}</strong></div>`).join('')
           + receipts.slice(0,10).map(entry => `<div class="material-line"><span>${esc(showMoment(entry.at))} • stok girişi</span><strong>+${esc(quantityLabel(entry.qty))}</strong></div>`).join('')
           + jobUses.slice(0,10).map(job => `<div class="material-line"><span>${esc(job.plate || '-')} • ${esc(job.task || '-')}</span><strong>−${esc(quantityLabel(job.materials[item.id]))}</strong></div>`).join('');
-        return `<div class="stock-card" data-stock-id="${id}">
-          <h3>${esc(item.name)}</h3>
+        return `<details class="stock-row" data-stock-id="${id}" ${expandedIds.has(item.id) || (query && matches.length === 1) ? 'open' : ''}>
+          <summary><span class="stock-name">${esc(item.name)}</span><span class="stock-balance ${numbers.balance === null ? 'stock-unknown' : numbers.balance < 0 ? 'stock-negative' : 'stock-positive'}">${esc(balance)}</span></summary>
+          <div class="stock-row-body">
           <div class="form-note">Birim: ${esc(item.unit)}</div>
           <div class="budget-row"><span>Açılış + giriş</span><strong>${numbers.opening === null ? '?' : esc(quantityLabel(numbers.opening))} + ${esc(quantityLabel(numbers.received))}</strong></div>
           <div class="budget-row"><span>İşlerde kullanıldı</span><strong>${esc(quantityLabel(numbers.used))} ${esc(item.unit)}</strong></div>
-          <div class="budget-row"><span>Kalan</span><strong class="${numbers.balance !== null && numbers.balance < 0 ? 'stock-negative' : 'stock-positive'}">${esc(balance)}</strong></div>
-          <div class="input-row"><input type="text" inputmode="decimal" data-stock-opening placeholder="AÇILIŞ / DÜZELTME" value="${numbers.opening === null ? '' : esc(numbers.opening)}"><button data-stock-act="opening" data-id="${id}">STOĞU KAYDET</button></div>
+          <div class="input-row"><input type="text" inputmode="decimal" data-stock-opening aria-label="${esc(item.name)} sayım miktarı" placeholder="GERÇEK SAYIYI YAZ" value="${numbers.opening === null ? '' : esc(numbers.opening)}"><button data-stock-act="opening" data-id="${id}">SAYIMI GÜNCELLE</button></div>
+          ${numbers.opening === null ? '' : `<button class="stock-clear-btn" data-stock-act="clear-opening" data-id="${id}">YANLIŞ SAYIMI GERİ AL · MİKTAR BİLİNMİYOR</button>`}
           <div class="input-row"><input type="text" inputmode="decimal" data-stock-receipt placeholder="GELEN MİKTAR"><button data-stock-act="receipt" data-id="${id}">STOK GİRİŞİ</button></div>
           ${movements ? `<details class="form-note"><summary>Hareketler • ${receipts.length} giriş, ${jobUses.length} iş</summary>${movements}${openings.length > 5 || receipts.length > 10 || jobUses.length > 10 ? '<div>En son hareketler gösteriliyor.</div>' : ''}</details>` : ''}
-        </div>`;
+          </div>
+        </details>`;
       }).join('') || '<div class="quote-empty">Malzeme bulunamadı. Aşağıdan yeni malzeme ekleyebilirsin.</div>';
     }
 
@@ -1297,6 +1321,19 @@
         await inventoryDb.child(id).update({ name: item.name, unit: item.unit, openingQty: qty, updatedAt: Date.now(),
           ['openingHistory/' + historyKey]: { from: inventory[id] && typeof inventory[id].openingQty === 'number' ? inventory[id].openingQty : null, to: qty, at: Date.now() } });
       } catch (e) { alert('Açılış stoğu kaydedilemedi.'); }
+    }
+
+    async function clearStockOpening(id) {
+      if (!inventoryDb || !inventoryLoaded) return;
+      const previous = inventory[id] && inventory[id].openingQty;
+      if (typeof previous !== 'number') return;
+      const item = materialMeta(id);
+      const historyKey = inventoryDb.child(id).child('openingHistory').push().key;
+      const now = Date.now();
+      try {
+        await inventoryDb.child(id).update({ name: item.name, unit: item.unit, openingQty: null, updatedAt: now,
+          ['openingHistory/' + historyKey]: { from: previous, action: 'clear', at: now } });
+      } catch (e) { alert('Yanlış sayım geri alınamadı.'); }
     }
 
     async function addStockReceipt(id, value) {
@@ -1644,10 +1681,16 @@
     document.getElementById('archiveQuoteList').addEventListener('click', handleQuoteAction);
 
     document.getElementById('stockSearch').addEventListener('input', renderStock);
+    document.getElementById('stockShowProfiles').addEventListener('change', renderStock);
     document.getElementById('stockCustomAddBtn').addEventListener('click', addCustomMaterial);
     document.getElementById('stockList').addEventListener('click', e => {
       const button = e.target.closest('[data-stock-act]');
       if (!button) return;
+      if (button.dataset.stockAct === 'clear-opening') {
+        button.disabled = true;
+        clearStockOpening(button.dataset.id).finally(() => { button.disabled = false; });
+        return;
+      }
       const card = button.closest('[data-stock-id]');
       const selector = button.dataset.stockAct === 'opening' ? '[data-stock-opening]' : '[data-stock-receipt]';
       const input = card && card.querySelector(selector);
