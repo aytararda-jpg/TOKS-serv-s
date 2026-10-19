@@ -1258,13 +1258,11 @@
       }
       const query = document.getElementById('stockSearch').value.trim().toLocaleUpperCase('tr-TR');
       const used = usedMaterialTotals();
-      const defaults = new Set(['basic_branda_tokasi','xlsm_211','xlsm_232']);
-      const matches = allMaterials().filter(item => query
-        ? item.name.toLocaleUpperCase('tr-TR').includes(query)
-        : defaults.has(item.id) || Object.prototype.hasOwnProperty.call(inventory, item.id) || !!used[item.id]);
+      const matches = allMaterials().filter(item =>
+        !query || item.name.toLocaleUpperCase('tr-TR').includes(query));
       matches.sort((a,b) => a.name.localeCompare(b.name, 'tr'));
-      message.textContent = `${matches.length} malzeme${matches.length > 60 ? ' bulundu; ilk 60 gösteriliyor, aramayı daraltın' : ' gösteriliyor'}. Açılış stoğu girilmemiş malzemede kalan miktar hesaplanmaz.`;
-      list.innerHTML = matches.slice(0,60).map(item => {
+      message.textContent = `${matches.length} malzeme gösteriliyor. Açılış stoğu girilmemiş malzemede kalan miktar hesaplanmaz.`;
+      list.innerHTML = matches.map(item => {
         const id = esc(item.id);
         const numbers = stockNumbers(item.id, used);
         const balance = numbers.balance === null ? 'AÇILIŞ STOĞU GİRİLMEDİ' : `${quantityLabel(numbers.balance)} ${item.unit}`;
