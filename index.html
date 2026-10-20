@@ -139,6 +139,10 @@
     .material-dialog { max-width:620px; margin:45px auto; background:#0a1420; border:2px solid var(--toks-yellow); border-radius:8px; padding:16px; }
     .material-dialog .input-row input:first-child { flex:3; }
     .material-dialog .input-row input:nth-child(2) { flex:1; }
+    .material-suggestions { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+    .material-suggestions button { width:auto; padding:6px 9px; font-size:0.7rem; background:#15263a; color:#fff; border:1px solid var(--border); border-radius:4px; cursor:pointer; }
+    .stock-review-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.78rem; }
+    .stock-review-row button { width:auto; padding:7px 10px; border:1px solid var(--toks-yellow); border-radius:4px; background:#0f172a; color:var(--toks-yellow); font-weight:bold; cursor:pointer; }
     @media (max-width:540px) { .input-row { flex-direction:column; } .input-row > *, #priceContainer { width:100% !important; } .quote-toolbar { flex-direction:column; } .tab { font-size:0.62rem; } .material-dialog { margin:10px auto; } }
 
     /* GİRİŞ EKRANI */
@@ -310,9 +314,14 @@
   </div>
 
   <div id="view-stock" style="display:none;">
+    <div class="input-panel" id="stockReviewPanel" style="display:none;">
+      <div class="modal-title" id="stockReviewTitle">FİŞİ KONTROL BEKLEYEN İŞLER</div>
+      <div class="form-note">İş bitmiş ama fişte kullanılan malzemeler henüz onaylanmamış. Stok kesinleşmesi için her işin malzemesini kontrol et.</div>
+      <div id="stockReviewList"></div>
+    </div>
     <div class="input-panel">
       <div class="modal-title">MALZEME STOK TAKİBİ</div>
-      <div class="form-note">Malzeme adları, birimleri ve birim satış fiyatları 27.02.2026 tarihli listeden alındı. Euro, TL ve Dolar fiyatları listedeki para birimleriyle gösterilir. Kaynakta fiyatı olmayanlar boş bırakılır. Kullanım iş bitince düşer; iptal veya silme stoku geri getirir.</div>
+      <div class="form-note">Malzeme adları, birimleri ve birim satış fiyatları 27.02.2026 tarihli listeden alındı. Euro, TL ve Dolar fiyatları listedeki para birimleriyle gösterilir. Kaynakta fiyatı olmayanlar boş bırakılır. Kullanım iş bitince düşer; iptal veya silme stoku geri getirir. Fiş kontrolü bekleyen işlerde stok miktarı geçici olabilir.</div>
       <input type="search" id="stockSearch" placeholder="MALZEME ARA (ÖRN. BRANDA TOKASI)">
       <label class="stock-profile-toggle"><input type="checkbox" id="stockShowProfiles"> PROFİLLERİ GÖSTER</label>
       <div id="stockMessage" class="form-note"></div>
@@ -324,6 +333,7 @@
         <input type="text" id="stockCustomName" maxlength="100" placeholder="MALZEME ADI">
         <select id="stockCustomUnit" aria-label="Malzeme birimi"><option>ADET</option><option>METRE</option><option>M²</option><option>KG</option><option>BOY</option><option>SET</option></select>
       </div>
+      <div class="form-note">Aynı malzemeyi farklı adla kullanıyorsan malzemenin satırındaki “DİĞER AD EKLE” alanını kullan.</div>
       <button class="btn" id="stockCustomAddBtn">MALZEMEYİ EKLE</button>
     </div>
   </div>
@@ -391,12 +401,16 @@
       <div class="form-note" id="materialJobInfo"></div>
       <div id="materialDraftList"></div>
       <div class="input-row" style="margin-top:12px;">
-        <input type="text" id="materialNameInput" list="materialNameOptions" placeholder="MALZEME ADI YAZ / SEÇ">
+        <input type="text" id="materialNameInput" list="materialNameOptions" maxlength="100" placeholder="MALZEME ADI YAZ / SEÇ">
         <datalist id="materialNameOptions"></datalist>
         <input type="text" inputmode="decimal" id="materialQtyInput" placeholder="ADET / MİKTAR">
       </div>
+      <div id="materialSuggestions" class="material-suggestions"></div>
+      <div class="form-note">Listede yoksa adı, miktarı ve birimi yaz. Malzeme stok listesine de eklenir. Fişi kontrol edip kaydettiğinde stok güncellenir.</div>
+      <label class="field-label" for="materialUnitInput">YENİ MALZEMENİN BİRİMİ</label>
+      <select id="materialUnitInput" aria-label="Yeni malzemenin birimi"><option>ADET</option><option>METRE</option><option>M²</option><option>KG</option><option>BOY</option><option>SET</option></select>
       <button class="btn" id="materialAddBtn">MALZEME EKLE</button>
-      <button class="btn" id="materialSaveBtn" style="background:var(--green);">KULLANIMI KAYDET</button>
+      <button class="btn" id="materialSaveBtn" style="background:var(--green);">FİŞİ KONTROL ET VE KAYDET</button>
     </div>
   </div>
 
@@ -734,6 +748,7 @@
               <div class="task">${esc(job.task || '')}</div>
               <div class="price-tag">Tutar: ${esc(job.price || 'Belirtilmemiş')}${rateTextFor(job)}</div>
               ${cashAmountTRY(job) ? `<div class="form-note" style="color:var(--green);">Alınan nakit: ${esc(money(cashAmountTRY(job), 'TRY'))}</div>` : ''}
+              ${materialReviewPending(job) ? '<div class="quote-badge pending">FİŞ MALZEMELERİ KONTROL BEKLİYOR</div>' : ''}
 
               <div class="timeline">
                 <div><span>Giriş:</span> ${esc(wTime)}</div>
@@ -816,6 +831,7 @@
                 <div class="task">${esc(job.task || '')}</div>
                 <div class="price-tag">Tutar: ${esc(job.price || 'Belirtilmemiş')}${rateTextFor(job)}</div>
                 ${cashAmountTRY(job) ? `<div class="form-note" style="color:var(--green);">Alınan nakit: ${esc(money(cashAmountTRY(job), 'TRY'))}</div>` : ''}
+                ${materialReviewPending(job) ? '<div class="quote-badge pending">FİŞ MALZEMELERİ KONTROL BEKLİYOR</div>' : ''}
                 ${job.cancelledAt ? '<div class="quote-badge not_arrived">İPTAL EDİLDİ • MALZEME STOĞA GERİ DÖNDÜ</div>' : ''}
                 ${job.deletedAt ? '<div class="quote-badge not_arrived">SİLİNDİ • MALZEME STOĞA GERİ DÖNDÜ</div>' : ''}
 
@@ -945,6 +961,10 @@
 
     // Kaynak: SATIŞ FİYATLARI 27.02.2026; para birimi E sütunundaki satış notundan alınır. Sıfır fiyatlar aktarılmaz.
     const STOCK_CATALOG = [{"id":"basic_branda_tokasi","name":"BRANDA TOKASI","unit":"ADET"},{"id":"xlsm_3","name":"Edscha ALÜ. RAY 16,50 GÜMRÜKLÜ","unit":"ADET"},{"id":"xlsm_4","name":"Edscha YAĞMUR LASTİĞİ ALÜ. RAY","unit":"METRE"},{"id":"xlsm_5","name":"VERSUS YAĞMUR LASTİĞİ GÜMRÜKLÜ","unit":"METRE"},{"id":"xlsm_6","name":"VERSUS YAĞMUR LASTİĞİ NORMAL DAR RAY","unit":"METRE"},{"id":"xlsm_7","name":"ARKA ARABA BİLYASI EDSCHA","unit":"ADET"},{"id":"xlsm_8","name":"EDCHA ARA PROFİL BAŞLIKLAR DAHİL","unit":"ADET"},{"id":"xlsm_9","name":"EDSCHA ARABA","unit":"ADET"},{"id":"xlsm_10","name":"EDSCHA ARABA TAŞIYICI AYAK PLASTİK","unit":"ADET"},{"id":"xlsm_11","name":"ÇATI ARABA PİSTONU","unit":"ADET"},{"id":"xlsm_12","name":"RAYLI ÇATI BASTONU","unit":"ADET"},{"id":"xlsm_13","name":"GEMA MODEL PLAKET","unit":"ADET"},{"id":"xlsm_14","name":"PLAKETİ (SESAM-VERSUS-EDSCHA)","unit":"ADET"},{"id":"xlsm_15","name":"RAYLI ÇATI RULMANI","unit":"ADET"},{"id":"xlsm_16","name":"BABA RAYI GALVANİZ","unit":"METRE"},{"id":"xlsm_17","name":"PERDE RAYI GALVANİZ","unit":"METRE"},{"id":"xlsm_18","name":"YAĞMUR LASTİĞİ ÇELİK RAY","unit":"METRE"},{"id":"xlsm_20","name":"EDSCHA YENİ MODEL ARA PROFİL TAŞIYICI","unit":"ADET"},{"id":"xlsm_21","name":"EDSCHA YENİ MODEL PLAKET","unit":"ADET"},{"id":"xlsm_22","name":"PVC KAPI FİTİLİ 32LİK (1 BY 3,20 MT)","unit":"BOY"},{"id":"xlsm_23","name":"PVC KAPI FİTİLİ 42LİK (1 BY 3,20 MT)","unit":"BOY"},{"id":"xlsm_25","name":"ARKA KAPI SAĞ - SOL ALT ÜST ÇERÇEVESİ","unit":"ADET"},{"id":"xlsm_26","name":"ARKA KAPI 4 & 5 MENTEŞE PROFİLİ","unit":"ADET"},{"id":"xlsm_28","name":"ARKA KAPI SAĞ KAPI ORTA ÇERÇEVESİ","unit":"ADET"},{"id":"xlsm_29","name":"ARKA KAPI SOL KAPI ORTA ÇERÇEVESİ","unit":"ADET"},{"id":"xlsm_30","name":"ARKA KAPI KİLİT KOLU","unit":"ADET"},{"id":"xlsm_31","name":"ARKA KAPI GAGASI","unit":"ADET"},{"id":"xlsm_32","name":"ARKA KAPI ALT GAGA YUVASI","unit":"ADET"},{"id":"xlsm_33","name":"ARKA KAPI ÜST GAGA YUVASI","unit":"ADET"},{"id":"xlsm_34","name":"KAPI FİTİLİ T ORTA FİTİL","unit":"ADET"},{"id":"xlsm_35","name":"KAPI FİTİLİ TIRNAKLI BALON","unit":"ADET"},{"id":"xlsm_36","name":"KAPI MENTEŞE YUVASI","unit":"ADET"},{"id":"xlsm_37","name":"MENTEŞE PİM BURCU","unit":"ADET"},{"id":"xlsm_38","name":"MENTEŞE BURCU","unit":"ADET"},{"id":"xlsm_39","name":"MENTEŞE PİM","unit":"ADET"},{"id":"xlsm_40","name":"DÖKÜM MENTEŞE TIRSAN TİPİ YENİ MODEL","unit":"ADET"},{"id":"xlsm_41","name":"DÖKÜM DORSE MENTEŞESİ SİLMESİ 5MM","unit":"ADET"},{"id":"xlsm_42","name":"DÖKÜM DORSE MENTEŞESİ DİŞİ","unit":"ADET"},{"id":"xlsm_43","name":"DÖKÜM DORSE MENTEŞESİ ERKEK","unit":"ADET"},{"id":"xlsm_44","name":"DÖNER TAKOZ 2'Lİ BÜYÜK","unit":"ADET"},{"id":"xlsm_45","name":"DÖNER TAKOZ LASTİĞİ BÜYÜK","unit":"ADET"},{"id":"xlsm_46","name":"DÖNER TAKOZ MİLİ BÜYÜK & KÜÇÜK","unit":"ADET"},{"id":"xlsm_47","name":"DÖNER TAKOZ 2'Lİ KÜÇÜK","unit":"ADET"},{"id":"xlsm_48","name":"DÖNER TAKOZ LASTİĞİ KÜÇÜK","unit":"ADET"},{"id":"xlsm_49","name":"GÜMRÜK KAPAĞI","unit":"ADET"},{"id":"xlsm_50","name":"GERGI MEKANIZMASI  STANDAR","unit":"ADET"},{"id":"xlsm_51","name":"GERGI MEKANIZMASI  YENI MODEL DOKUM","unit":"ADET"},{"id":"xlsm_52","name":"GERGI MEKANIZMASI ORDJİNAL","unit":"ADET"},{"id":"xlsm_53","name":"GÖMME KAPAK KİLİT T'Sİ 60 MM - 95 NMM","unit":"ADET"},{"id":"xlsm_54","name":"GÖMME KAPAK KLİDİ YENİ MODEL","unit":"ADET"},{"id":"xlsm_55","name":"GÖMME KİLİT KARŞILIĞI","unit":"ADET"},{"id":"xlsm_56","name":"YAN BARİYER TAKOZU BÜYÜK","unit":"ADET"},{"id":"xlsm_57","name":"YAN BARİYER TAKOZU","unit":"ADET"},{"id":"xlsm_58","name":"YAN BARİYER TAKOZU(TIRSAN)","unit":"ADET"},{"id":"xlsm_59","name":"GOMME KAPAK KILIDI","unit":"ADET"},{"id":"xlsm_60","name":"BABA KIRMA YERLİ (SET)","unit":"ADET"},{"id":"xlsm_61","name":"KAYAR BABA YERLİ (SET)","unit":"ADET"},{"id":"xlsm_62","name":"KAYAR BABA EĞRİSİ (DEVE BOYNU)","unit":"ADET"},{"id":"xlsm_64","name":"BABA  KAYAR ADAYKO","unit":"ADET"},{"id":"xlsm_65","name":"BABA KAYAR HESTAL","unit":"ADET"},{"id":"xlsm_66","name":"HESTAL BABA BASMA AÇMA PLASTİK PİM","unit":"ADET"},{"id":"xlsm_68","name":"REFLEKTİF KESİK  YUMUŞAK ZEMİN ŞERİT","unit":"METRE"},{"id":"xlsm_69","name":"REFLEKTİF ŞERİT SERT ZEMİN","unit":"METRE"},{"id":"xlsm_70","name":"TABAN TAHTASI 15 MM 125LİK","unit":"ADET"},{"id":"xlsm_71","name":"TABAN TAHTASI 21MM 125LİK","unit":"ADET"},{"id":"xlsm_72","name":"TABAN TAHTASI 30MM 125LİK","unit":"ADET"},{"id":"xlsm_73","name":"TABAN TAHTASI 30MM 150LİK","unit":"ADET"},{"id":"xlsm_74","name":"TABAN TAHTASI 9MM 125LİK ekşioğlı","unit":"ADET"},{"id":"xlsm_75","name":"TABAN VİDASI","unit":"ADET"},{"id":"xlsm_76","name":"TAHTA GEÇME YERİ üzün","unit":"ADET"},{"id":"xlsm_77","name":"TAHTA GEÇME YERİ (lata yatağı) kısa","unit":"ADET"},{"id":"xlsm_78","name":"TAMPON C","unit":"ADET"},{"id":"xlsm_79","name":"TAMPON KORUMAPROFİL 120*120 & BORU 120 LIK","unit":"ADET"},{"id":"xlsm_80","name":"TAMPON GENİŞ","unit":"ADET"},{"id":"xlsm_81","name":"DOLAP 150*50*60","unit":"ADET"},{"id":"xlsm_82","name":"DOLAP 150*45*45","unit":"ADET"},{"id":"xlsm_83","name":"DOLAP 150'LIK","unit":"ADET"},{"id":"xlsm_84","name":"PLASTIK TAKIM DOLABI 60 LIK","unit":"ADET"},{"id":"xlsm_85","name":"PLASTIK TAKIM DOLABI 80 LIK","unit":"ADET"},{"id":"xlsm_86","name":"DOLAP KİLİDİ TIRSAN MODEL","unit":"ADET"},{"id":"xlsm_87","name":"SU TANKI TIRSAN MODEL","unit":"ADET"},{"id":"xlsm_88","name":"SU TANKI 30 LT","unit":"ADET"},{"id":"xlsm_89","name":"SU TANKI 55 LT","unit":"ADET"},{"id":"xlsm_91","name":"KAPI TUTAMAĞI","unit":"ADET"},{"id":"xlsm_95","name":"YANGIN TÜPÜ DOLABI 6/9 KG","unit":"ADET"},{"id":"xlsm_96","name":"YANICI LEVHA","unit":"ADET"},{"id":"xlsm_97","name":"TIR REFLEKTÖR ALÜMİNYUM  KATLANIR LEVHA","unit":"ADET"},{"id":"xlsm_99","name":"REFLEKTÖR (alüminyum) KAMYON-adet","unit":"ADET"},{"id":"xlsm_101","name":"REFLEKTÖR (alüminyum) TIR-adet","unit":"ADET"},{"id":"xlsm_102","name":"ALÜ BİSİKLETLİK DAR BAŞLIK","unit":"METRE"},{"id":"xlsm_103","name":"ALÜ. BİSİKLETLİK KORKULUĞU","unit":"METRE"},{"id":"xlsm_106","name":"ALÜ. TAHTALIK V GEÇME YAN YAPI","unit":"ADET"},{"id":"xlsm_107","name":"ALÜ. TAHTALIK YAN YAPI","unit":"ADET"},{"id":"xlsm_108","name":"ALÜ. YAĞMUR OLUĞU","unit":"ADET"},{"id":"xlsm_109","name":"SAÇ YAĞMUR OLUĞU","unit":"ADET"},{"id":"xlsm_112","name":"BABA J'Sİ","unit":"ADET"},{"id":"xlsm_113","name":"BABA MAKARASI (ÇELİK RAYI)","unit":"ADET"},{"id":"xlsm_114","name":"BABA MAKARASI  ALÜ. RAYA GÖRE","unit":"ADET"},{"id":"xlsm_115","name":"BARİYER AYAĞI  75 CM","unit":"ADET"},{"id":"xlsm_116","name":"BARİYER AYAĞI 55 CM","unit":"ADET"},{"id":"xlsm_117","name":"BORULU STEPNE YERİ","unit":"ADET"},{"id":"xlsm_118","name":"STEPNE TAŞIYICI KAMYON","unit":"ADET"},{"id":"xlsm_119","name":"BAĞLANTI SOMUNU 5*8 (UNÇ Ç. SOMON)","unit":"ADET"},{"id":"xlsm_120","name":"SİLME ÇITA ALÜMİNYUM","unit":"ADET"},{"id":"xlsm_121","name":"BORU YUVASI BÜYÜK ÇAP 27","unit":"ADET"},{"id":"xlsm_122","name":"BORU YUVASI KÜÇÜK","unit":"ADET"},{"id":"xlsm_123","name":"YAYLI KÖPRÜ","unit":"ADET"},{"id":"xlsm_124","name":"KAPAK KÖPRÜ 32MM","unit":"ADET"},{"id":"xlsm_125","name":"RAYLI ÇATI YÜZÜĞÜ","unit":"ADET"},{"id":"xlsm_127","name":"KANCA TAKIMI SİMETRİ GALVANİZ 27","unit":"ADET"},{"id":"xlsm_128","name":"KARBOSAN FLEX ÇAPAK TAŞI","unit":"ADET"},{"id":"xlsm_129","name":"KASA BAĞLANTISI 50*10","unit":"SET"},{"id":"xlsm_131","name":"KONTEYNER KİLİDİ","unit":"ADET"},{"id":"xlsm_132","name":"ALÜMİNYUM YAN KAPAK YATAY KİLİD U PROFİLİ","unit":"ADET"},{"id":"xlsm_134","name":"ELEKTROT (NORMAL)","unit":"ADET"},{"id":"xlsm_135","name":"ELEKTROT (ALÜMİNYUM)","unit":"ADET"},{"id":"xlsm_138","name":"BÜYÜK BORU YUVAS ÇAP 27","unit":"ADET"},{"id":"xlsm_139","name":"SİMETRİK KANCA TAKIMI 27","unit":"ADET"},{"id":"xlsm_140","name":"KAPI KİLİT YUVAS","unit":"ADET"},{"id":"xlsm_142","name":"GAZ KARIŞIM 12,83 M³","unit":"ADET"},{"id":"xlsm_143","name":"ARKA KAPI KİLİDİ DÖKÜM","unit":"ADET"},{"id":"xlsm_145","name":"LAMA AYAKLI MENTEŞE","unit":"ADET"},{"id":"xlsm_146","name":"D HALKA BORU TİPİ KÜÇÜK SALLAMA","unit":"ADET"},{"id":"xlsm_147","name":"PLASTİKLİ KOL TAKIM GALVANİZ 27'LİK","unit":"ADET"},{"id":"xlsm_148","name":"PLASTİKLİ KOL GALVANİZ 27'LİK","unit":"ADET"},{"id":"xlsm_150","name":"BARIYER AYAĞI KISA","unit":"ADET"},{"id":"xlsm_151","name":"BARIYER AYAĞI UZUN","unit":"ADET"},{"id":"xlsm_152","name":"ÇELİK  BÜKÜMLÜ MAKARA","unit":"ADET"},{"id":"xlsm_154","name":"MENTEŞE LAMASI","unit":"ADET"},{"id":"xlsm_155","name":"MENTEŞE PİMİ","unit":"ADET"},{"id":"xlsm_157","name":"MENTEŞE YUVASI","unit":"ADET"},{"id":"xlsm_158","name":"ÖN PANEL BÜKÜMLÜ SAC","unit":"ADET"},{"id":"xlsm_159","name":"PROFİL MUTALİF ÖLÇÜLER","unit":"METRE"},{"id":"xlsm_161","name":"NPU 100 DEMİR","unit":"METRE"},{"id":"xlsm_162","name":"NPU 80 DEMİR","unit":"METRE"},{"id":"xlsm_163","name":"NPI 80 DEMİR","unit":"METRE"},{"id":"xlsm_164","name":"40*60*3 PROFİL","unit":"METRE"},{"id":"xlsm_165","name":"30*50*3 PROFİL","unit":"METRE"},{"id":"xlsm_166","name":"30*30*2,5 PROFİL","unit":"METRE"},{"id":"xlsm_167","name":"25*40*2 PROFİL","unit":"METRE"},{"id":"xlsm_168","name":"KÖŞEBENT DEMİRİ 30'LUK","unit":"ADET"},{"id":"xlsm_170","name":"LAMA 60*10","unit":"METRE"},{"id":"xlsm_171","name":"LAMA 40*10","unit":"METRE"},{"id":"xlsm_173","name":"LAMA 80*10","unit":"METRE"},{"id":"xlsm_174","name":"LAMA 30*5","unit":"METRE"},{"id":"xlsm_175","name":"LAMA 30*10","unit":"METRE"},{"id":"xlsm_176","name":"100*100*4 PROFİL","unit":"METRE"},{"id":"xlsm_177","name":"120 LİK 4MM BORU","unit":"METRE"},{"id":"xlsm_179","name":"SAÇ 125*250*2 = 50 KG","unit":"KG"},{"id":"xlsm_180","name":"OKSİJEN GAZI 6,4 M³","unit":"ADET"},{"id":"xlsm_181","name":"OKSİJEN GAZI 8 M³","unit":"ADET"},{"id":"xlsm_182","name":"ÇAMURLUK ÇİFT TEKER","unit":"ADET"},{"id":"xlsm_183","name":"ÇAMURLUK IVECO TEK TEKER","unit":"ADET"},{"id":"xlsm_184","name":"ÇAMURLUK IVECO ÇİF TEKER","unit":"ADET"},{"id":"xlsm_185","name":"ÇAMURLUK BORUSU UZUN","unit":"ADET"},{"id":"xlsm_186","name":"ÇAMURLUK BORUSU KISA","unit":"ADET"},{"id":"xlsm_187","name":"ÇAMURLUK KELEPÇESİ","unit":"ADET"},{"id":"xlsm_188","name":"ÇAMURLUK TEK TEKER","unit":"ADET"},{"id":"xlsm_189","name":"SARI TAKOZ","unit":"ADET"},{"id":"xlsm_190","name":"YÜK BAĞLAMA HALKASI","unit":"ADET"},{"id":"xlsm_192","name":"YÜK TUTUCU ALÜMİNYUM","unit":"ADET"},{"id":"xlsm_197","name":"GERGİ BORUSU GEÇMELI ORJINAL","unit":"ADET"},{"id":"xlsm_198","name":"ALT-ÜST ADAPTÖR (KALIN BORU)","unit":"ADET"},{"id":"xlsm_199","name":"ALT-ÜST ADAPTÖR (İNCEBORU)","unit":"ADET"},{"id":"xlsm_200","name":"GERGİ BORUSU  KALIN 3MT","unit":"ADET"},{"id":"xlsm_201","name":"GERGİ BORUSU İNCE 3MT","unit":"ADET"},{"id":"xlsm_202","name":"BRANDA GERME KANCASI 3MT","unit":"ADET"},{"id":"xlsm_203","name":"BRANDA KAYIŞ","unit":"METRE"},{"id":"xlsm_204","name":"BRANDA KÖPRÜSÜ 35 MM","unit":"ADET"},{"id":"xlsm_205","name":"BRANDA KULAK","unit":"ADET"},{"id":"xlsm_206","name":"BRANDA TUTMA KOLU (KAYIŞTAN)","unit":"ADET"},{"id":"xlsm_207","name":"YAPIŞABİLİR KOLON","unit":"METRE"},{"id":"xlsm_208","name":"P KÖPRÜ","unit":"ADET"},{"id":"xlsm_209","name":"KAPSÜL OVAL","unit":"ADET"},{"id":"xlsm_210","name":"KAPSÜL YUVARLAK (TIR)","unit":"ADET"},{"id":"xlsm_211","name":"KAPSÜL 32'LİK ÇATI","unit":"ADET"},{"id":"xlsm_212","name":"TAVAN BAĞLANTI TOKASI","unit":"ADET"},{"id":"xlsm_213","name":"TEKLİ GERGİ LASİTİĞİ","unit":"ADET"},{"id":"xlsm_214","name":"S KANCA","unit":"ADET"},{"id":"xlsm_215","name":"SABİTLEME LAMASI GALVANİZ","unit":"ADET"},{"id":"xlsm_216","name":"P KANCA PLASTİK GRİ","unit":"ADET"},{"id":"xlsm_217","name":"ÇELİT HALATI, ÇATI","unit":"METRE"},{"id":"xlsm_218","name":"KOLONLU KANCA GALVANİZ (NORMAL VE e)","unit":"ADET"},{"id":"xlsm_219","name":"KOLONLU KANCA PASLANMAZ (GALVANİZ VE e)","unit":"ADET"},{"id":"xlsm_220","name":"PASLANMAZ ÇELİK TOKA KÜÇÜK","unit":"ADET"},{"id":"xlsm_221","name":"PERDE MAKARASI (EDSCHA)","unit":"ADET"},{"id":"xlsm_222","name":"FİTİL İP SİLİKON 10 ÇAP","unit":"METRE"},{"id":"xlsm_223","name":"GERGİ  PLASTİĞİ ALTI","unit":"ADET"},{"id":"xlsm_224","name":"GERGİ LASTİĞİ     [BİR BOY 15 MT]","unit":"METRE"},{"id":"xlsm_225","name":"GERGİ LASTİĞİ BAŞLIĞI","unit":"ADET"},{"id":"xlsm_229","name":"FOLYO","unit":"M²"},{"id":"xlsm_231","name":"PERÇİN alüminyum","unit":"ADET"},{"id":"xlsm_232","name":"PERÇİN çelik","unit":"ADET"},{"id":"xlsm_233","name":"PAS SÖKÜCÜ SPREY","unit":"ADET"},{"id":"xlsm_234","name":"Silikon Dayson","unit":"ADET"},{"id":"xlsm_236","name":"FLAP ZIMPARA","unit":"ADET"},{"id":"xlsm_237","name":"KESME-TAŞLAMA TAŞI","unit":"ADET"},{"id":"xlsm_238","name":"CİVATA","unit":"ADET"},{"id":"xlsm_239","name":"KURT AĞZI [KLEMENS ]","unit":"ADET"},{"id":"xlsm_240","name":"MACUN","unit":"ADET"},{"id":"xlsm_241","name":"YARIKLI PİM","unit":"ADET"},{"id":"xlsm_242","name":"AKILLI VİDA","unit":"ADET"},{"id":"xlsm_245","name":"TIRSAN TİPİ GÖMME KİLİT","unit":"ADET"},{"id":"xlsm_246","name":"HESTEL ALT KİLİT","unit":"ADET"},{"id":"xlsm_247","name":"HESTEL ALT KİLİT KARŞILIĞI","unit":"ADET"},{"id":"xlsm_248","name":"NEVPA KAPI ALT KİLİT KARŞILIĞI","unit":"ADET"},{"id":"xlsm_249","name":"MEGA MENTEŞE TAKIM","unit":"ADET"},{"id":"xlsm_250","name":"MASKELEME BANTI","unit":"ADET"},{"id":"xlsm_251","name":"KAPI MİL PLASTİĞİ ORTA","unit":"ADET"},{"id":"xlsm_253","name":"MİL MENTEŞE","unit":"ADET"},{"id":"xlsm_254","name":"U HALKA","unit":"ADET"},{"id":"xlsm_256","name":"VERSUS ÇATI ARABASI","unit":"ADET"},{"id":"xlsm_257","name":"ÖN KEP-ŞAPKA","unit":"ADET"},{"id":"xlsm_258","name":"ÇİFTLİ LAMA","unit":"ADET"},{"id":"xlsm_259","name":"YAN KAPAK ALT PROFİL","unit":"ADET"},{"id":"xlsm_260","name":"ÇELİK RAY - ALÜ RAY - KOMBİN RAY","unit":"ADET"},{"id":"xlsm_261","name":"YAPRAK MENTEŞE","unit":"ADET"},{"id":"xlsm_262","name":"CİVATALI (ARMUT) TAKOZ BÜYÜK","unit":"ADET"},{"id":"xlsm_263","name":"CİVATALI (ARMUT) TAKOZ KÜÇÜK","unit":"ADET"},{"id":"xlsm_264","name":"DİK KİLİT SAC PROFİL 700MM","unit":"ADET"},{"id":"xlsm_265","name":"DİK KİLİT SAC PROFİL 900MM","unit":"ADET"},{"id":"xlsm_266","name":"BANT","unit":"ADET"},{"id":"xlsm_268","name":"GÜMRÜK HALATI","unit":"METRE"},{"id":"xlsm_270","name":"BOYA","unit":"KG"},{"id":"xlsm_271","name":"ASTAR","unit":"ADET"},{"id":"xlsm_272","name":"TİNER","unit":"ADET"}];
+    STOCK_CATALOG.push(
+      { id: 'basic_baba_sabitleme_demiri', name: 'BABA SABİTLEME DEMİRİ', unit: 'ADET' },
+      { id: 'basic_branda_yamasi', name: 'BRANDA YAMASI', unit: 'ADET', aliases: ['BRANDA YAMA'] }
+    );
     const STOCK_EXCLUDED_IDS = new Set(['xlsm_93', 'xlsm_94', 'xlsm_104', 'xlsm_226', 'xlsm_227']);
     const STOCK_PRICE_CATALOG = {"xlsm_3":[860,"EUR"],"xlsm_4":[5.6,"EUR"],"xlsm_5":[11.36,"EUR"],"xlsm_6":[8.64,"EUR"],"xlsm_7":[6.3,"EUR"],"xlsm_8":[70.2,"EUR"],"xlsm_9":[360,"EUR"],"xlsm_10":[40,"EUR"],"xlsm_11":[16,"EUR"],"xlsm_12":[34,"EUR"],"xlsm_13":[13.3,"EUR"],"xlsm_14":[10.4,"EUR"],"xlsm_15":[5.95,"EUR"],"xlsm_16":[10.71,"USD"],"xlsm_17":[12.835,"USD"],"xlsm_18":[8,"EUR"],"xlsm_20":[88,"EUR"],"xlsm_21":[28.8,"EUR"],"xlsm_22":[13,"EUR"],"xlsm_23":[15.4,"EUR"],"xlsm_25":[40,"EUR"],"xlsm_26":[184,"EUR"],"xlsm_28":[64,"EUR"],"xlsm_29":[57.6,"EUR"],"xlsm_30":[32,"EUR"],"xlsm_31":[12,"EUR"],"xlsm_32":[19.2,"EUR"],"xlsm_33":[13.6,"EUR"],"xlsm_34":[10.08,"EUR"],"xlsm_35":[8.8,"EUR"],"xlsm_36":[7.2,"EUR"],"xlsm_37":[2.48,"EUR"],"xlsm_38":[1.36,"EUR"],"xlsm_39":[5.68,"EUR"],"xlsm_40":[15.2,"EUR"],"xlsm_41":[5,"EUR"],"xlsm_42":[8.3,"EUR"],"xlsm_43":[7.3,"EUR"],"xlsm_44":[25.6,"EUR"],"xlsm_45":[7.7,"EUR"],"xlsm_46":[3.3,"EUR"],"xlsm_47":[22.4,"EUR"],"xlsm_48":[5.94,"EUR"],"xlsm_49":[16,"EUR"],"xlsm_50":[28.8,"EUR"],"xlsm_51":[57.6,"EUR"],"xlsm_52":[114.8,"EUR"],"xlsm_53":[4.512,"EUR"],"xlsm_54":[26.8,"EUR"],"xlsm_55":[4.8,"EUR"],"xlsm_56":[6.4,"EUR"],"xlsm_57":[6.4,"EUR"],"xlsm_58":[7.6,"EUR"],"xlsm_59":[29.6,"EUR"],"xlsm_60":[176,"EUR"],"xlsm_61":[296,"EUR"],"xlsm_62":[32,"EUR"],"xlsm_64":[537.6,"EUR"],"xlsm_65":[544,"EUR"],"xlsm_66":[12,"EUR"],"xlsm_68":[3.52,"EUR"],"xlsm_69":[2.4,"EUR"],"xlsm_70":[102,"EUR"],"xlsm_71":[119,"EUR"],"xlsm_72":[178.5,"EUR"],"xlsm_73":[229.5,"EUR"],"xlsm_74":[68,"EUR"],"xlsm_75":[0.9,"EUR"],"xlsm_76":[15.3,"EUR"],"xlsm_77":[3.96,"EUR"],"xlsm_78":[187.5,"EUR"],"xlsm_79":[175,"EUR"],"xlsm_80":[212.5,"EUR"],"xlsm_81":[189,"EUR"],"xlsm_82":[189,"EUR"],"xlsm_83":[189,"EUR"],"xlsm_84":[50.4,"EUR"],"xlsm_85":[63,"EUR"],"xlsm_86":[20.8,"EUR"],"xlsm_87":[77,"EUR"],"xlsm_88":[20.4,"EUR"],"xlsm_89":[37.4,"EUR"],"xlsm_91":[52.8,"EUR"],"xlsm_95":[22.1,"EUR"],"xlsm_96":[8,"EUR"],"xlsm_97":[8,"EUR"],"xlsm_99":[8,"EUR"],"xlsm_101":[12,"EUR"],"xlsm_102":[3.3,"EUR"],"xlsm_103":[9.6,"EUR"],"xlsm_106":[36,"EUR"],"xlsm_107":[27,"EUR"],"xlsm_108":[30.6,"EUR"],"xlsm_109":[36,"EUR"],"xlsm_112":[19.2,"EUR"],"xlsm_113":[19.25,"EUR"],"xlsm_114":[24.5,"EUR"],"xlsm_115":[20.8,"EUR"],"xlsm_116":[16,"EUR"],"xlsm_117":[104,"EUR"],"xlsm_118":[144,"EUR"],"xlsm_119":[36,"TRY"],"xlsm_120":[75,"TRY"],"xlsm_121":[6.4,"EUR"],"xlsm_122":[3.2,"EUR"],"xlsm_123":[24.5,"TRY"],"xlsm_124":[21,"TRY"],"xlsm_125":[12,"TRY"],"xlsm_127":[14.4,"EUR"],"xlsm_128":[30.72,"TRY"],"xlsm_129":[7.2,"EUR"],"xlsm_131":[2320,"TRY"],"xlsm_132":[24,"EUR"],"xlsm_134":[17,"TRY"],"xlsm_135":[42.5,"TRY"],"xlsm_138":[3.91,"EUR"],"xlsm_139":[15.3,"EUR"],"xlsm_140":[4.25,"EUR"],"xlsm_143":[47.6,"EUR"],"xlsm_145":[9.6,"EUR"],"xlsm_146":[2.5,"EUR"],"xlsm_147":[37.4,"EUR"],"xlsm_148":[11.9,"EUR"],"xlsm_150":[18.4,"EUR"],"xlsm_151":[20.8,"EUR"],"xlsm_152":[5.2,"EUR"],"xlsm_154":[44.72,"TRY"],"xlsm_155":[27.2,"TRY"],"xlsm_157":[56,"TRY"],"xlsm_161":[297.6,"TRY"],"xlsm_162":[256,"TRY"],"xlsm_163":[179.2,"TRY"],"xlsm_164":[137.6,"TRY"],"xlsm_165":[123.2,"TRY"],"xlsm_166":[72,"TRY"],"xlsm_167":[73.6,"TRY"],"xlsm_168":[101.472,"TRY"],"xlsm_170":[208,"TRY"],"xlsm_171":[160,"TRY"],"xlsm_173":[273.6,"TRY"],"xlsm_174":[77,"TRY"],"xlsm_175":[121,"TRY"],"xlsm_176":[464,"TRY"],"xlsm_177":[416,"TRY"],"xlsm_179":[56,"TRY"],"xlsm_180":[78.444,"TRY"],"xlsm_181":[75.51,"TRY"],"xlsm_182":[28.8,"EUR"],"xlsm_183":[11.2,"EUR"],"xlsm_184":[16,"EUR"],"xlsm_185":[11.2,"EUR"],"xlsm_186":[8,"EUR"],"xlsm_187":[3.2,"EUR"],"xlsm_188":[17.6,"EUR"],"xlsm_189":[12,"EUR"],"xlsm_190":[2,"EUR"],"xlsm_192":[51.75,"EUR"],"xlsm_197":[132.6,"EUR"],"xlsm_198":[9.6,"EUR"],"xlsm_199":[11.2,"EUR"],"xlsm_200":[35.75,"EUR"],"xlsm_201":[39.2,"EUR"],"xlsm_202":[30.8,"EUR"],"xlsm_203":[40,"TRY"],"xlsm_204":[42,"TRY"],"xlsm_205":[100,"TRY"],"xlsm_206":[56,"TRY"],"xlsm_207":[1.17,"EUR"],"xlsm_208":[35,"TRY"],"xlsm_209":[35,"TRY"],"xlsm_210":[30,"TRY"],"xlsm_211":[30,"TRY"],"xlsm_212":[60,"TRY"],"xlsm_213":[40,"TRY"],"xlsm_214":[30,"TRY"],"xlsm_215":[40,"TRY"],"xlsm_216":[35,"TRY"],"xlsm_217":[24,"TRY"],"xlsm_218":[3.15,"EUR"],"xlsm_219":[4.55,"EUR"],"xlsm_220":[5.5,"EUR"],"xlsm_221":[6.6,"EUR"],"xlsm_222":[11.2,"TRY"],"xlsm_223":[4.8,"TRY"],"xlsm_224":[24,"TRY"],"xlsm_225":[11.2,"TRY"],"xlsm_229":[2.56,"EUR"],"xlsm_231":[15,"TRY"],"xlsm_232":[25,"TRY"],"xlsm_233":[280,"TRY"],"xlsm_234":[7.2,"EUR"],"xlsm_236":[156,"TRY"],"xlsm_237":[84,"TRY"],"xlsm_238":[40,"TRY"],"xlsm_239":[75,"TRY"],"xlsm_241":[35.2,"TRY"],"xlsm_242":[17.5,"TRY"],"xlsm_249":[296,"TRY"],"xlsm_250":[58,"TRY"],"xlsm_253":[17.6,"TRY"],"xlsm_262":[56,"TRY"],"xlsm_263":[40,"TRY"],"xlsm_264":[344,"TRY"],"xlsm_265":[368,"TRY"],"xlsm_268":[13.75,"TRY"],"xlsm_270":[720,"TRY"],"xlsm_271":[480,"TRY"],"xlsm_272":[240,"TRY"]};
 
@@ -1297,12 +1317,40 @@
     }
 
     // --- MALZEME VE STOK ---
+    function materialKey(value) {
+      return String(value || '').trim().toLocaleUpperCase('tr-TR').replace(/\s+/g, ' ')
+        .replace(/İ/g, 'I').replace(/ı/g, 'I').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Z0-9]+/g, ' ').trim();
+    }
+
     function allMaterials() {
       const byId = new Map(STOCK_CATALOG.map(item => [item.id, item]));
       for (const [id, item] of Object.entries(inventory)) {
-        if (!STOCK_EXCLUDED_IDS.has(id) && item && item.name && item.unit) byId.set(id, { id, name: item.name, unit: item.unit });
+        if (!STOCK_EXCLUDED_IDS.has(id) && item && item.name && item.unit) {
+          const listed = byId.get(id);
+          const savedAliases = Object.values(item.aliases || {}).filter(value => typeof value === 'string');
+          byId.set(id, { id, name: item.name, unit: item.unit, aliases: [...(listed && listed.aliases || []), ...savedAliases] });
+        }
       }
       return [...byId.values()];
+    }
+
+    function materialNames(item) {
+      return [item.name, ...(item.aliases || [])];
+    }
+
+    function findMaterialByName(name) {
+      const key = materialKey(name);
+      return key ? allMaterials().find(item => materialNames(item).some(value => materialKey(value) === key)) : null;
+    }
+
+    function matchingMaterials(name, limit = 5) {
+      const key = materialKey(name);
+      if (!key) return [];
+      return allMaterials().filter(item => materialNames(item).some(value => {
+        const other = materialKey(value);
+        return other.includes(key) || key.includes(other);
+      })).slice(0, limit);
     }
 
     function isProfileMaterial(item) {
@@ -1379,21 +1427,33 @@
       }).join('')}</div>`;
     }
 
+    function materialReviewPending(job) {
+      return job && (job.status === 2 || job.status === 3) && job.materialsReviewRequiredAt && !job.materialsReviewedAt && !job.cancelledAt && !job.deletedAt;
+    }
+
+    function renderStockReviews() {
+      const pending = jobs.filter(materialReviewPending).sort((a,b) => Number(b.materialsReviewRequiredAt || 0) - Number(a.materialsReviewRequiredAt || 0));
+      document.getElementById('stockReviewPanel').style.display = pending.length ? 'block' : 'none';
+      document.getElementById('stockReviewTitle').textContent = `FİŞİ KONTROL BEKLEYEN İŞLER (${pending.length})`;
+      document.getElementById('stockReviewList').innerHTML = pending.map(job => `<div class="stock-review-row"><span>${esc(job.plate || '-')} • ${esc(job.firm || '-')} • ${esc(job.task || '-')}</span><button data-review-job="${esc(job.id)}">FİŞİ AÇ</button></div>`).join('');
+    }
+
     function renderStock() {
       const list = document.getElementById('stockList');
       const message = document.getElementById('stockMessage');
+      renderStockReviews();
       if (!inventoryLoaded || inventoryError) {
         message.textContent = inventoryError || 'Stok verileri yükleniyor...';
         list.innerHTML = '';
         return;
       }
-      const query = document.getElementById('stockSearch').value.trim().toLocaleUpperCase('tr-TR');
+      const query = materialKey(document.getElementById('stockSearch').value);
       const showProfiles = document.getElementById('stockShowProfiles').checked;
       const used = usedMaterialTotals();
       const materials = allMaterials();
       const hiddenProfiles = !showProfiles && !query ? materials.filter(isProfileMaterial).length : 0;
       const matches = materials.filter(item => query
-        ? item.name.toLocaleUpperCase('tr-TR').includes(query)
+        ? materialNames(item).some(name => materialKey(name).includes(query))
         : showProfiles || !isProfileMaterial(item));
       const missingPrices = matches.filter(item => !stockPrice(item.id)).length;
       const expandedIds = new Set([...list.querySelectorAll('.stock-row[open]')].map(row => row.dataset.stockId));
@@ -1417,6 +1477,9 @@
           <summary><span class="stock-heading"><span class="stock-name">${esc(item.name)}</span><span class="stock-price ${price ? '' : 'stock-price-missing'}">${esc(stockPriceLabel(item.id, item.unit))}</span></span><span class="stock-balance ${numbers.balance === null ? 'stock-unknown' : numbers.balance < 0 ? 'stock-negative' : 'stock-positive'}">${esc(balance)}</span></summary>
           <div class="stock-row-body">
           <div class="form-note">Birim: ${esc(item.unit)}</div>
+          ${item.aliases && item.aliases.length ? `<div class="form-note">Diğer adları: ${esc(item.aliases.join(', '))}</div>` : ''}
+          ${Object.entries(record.aliases || {}).filter(([,alias]) => typeof alias === 'string').map(([key,alias]) => `<button class="stock-clear-btn" data-stock-act="remove-alias" data-id="${id}" data-alias-key="${esc(key)}">${esc(alias)} ADINI KALDIR</button>`).join('')}
+          <div class="input-row"><input type="text" maxlength="100" data-stock-alias aria-label="${esc(item.name)} diğer adı" placeholder="AYNI MALZEMENİN DİĞER ADI"><button data-stock-act="alias" data-id="${id}">DİĞER AD EKLE</button></div>
           <div class="form-note">${price && price.source === 'manual' ? 'Elle güncellenen satış fiyatı' : price ? '27.02.2026 listesindeki satış fiyatı' : 'Kaynak listede geçerli satış fiyatı yok'}</div>
           <div class="input-row"><input type="text" inputmode="decimal" data-stock-price aria-label="${esc(item.name)} satış fiyatı" placeholder="BİRİM SATIŞ FİYATI" value="${price ? esc(price.amount) : ''}"><select data-stock-price-currency aria-label="${esc(item.name)} fiyat para birimi"><option value="EUR" ${price && price.currency === 'EUR' ? 'selected' : ''}>EUR</option><option value="TRY" ${!price || price.currency === 'TRY' ? 'selected' : ''}>TL</option><option value="USD" ${price && price.currency === 'USD' ? 'selected' : ''}>USD</option></select><button data-stock-act="price" data-id="${id}">FİYATI KAYDET</button></div>
           ${record.salePrice ? `<button class="stock-clear-btn" data-stock-act="reset-price" data-id="${id}">ELLE GİRİLEN FİYATI GERİ AL</button>` : ''}
@@ -1429,7 +1492,7 @@
           ${movements ? `<details class="form-note"><summary>Hareketler • ${receipts.length} giriş, ${jobUses.length} iş</summary>${movements}${openings.length > 5 || receipts.length > 10 || jobUses.length > 10 ? '<div>En son hareketler gösteriliyor.</div>' : ''}</details>` : ''}
           </div>
         </details>`;
-      }).join('') || '<div class="quote-empty">Malzeme bulunamadı. Aşağıdan yeni malzeme ekleyebilirsin.</div>';
+      }).join('') || '<div class="quote-empty">Malzeme bulunamadı. Aşağıdan veya işin malzeme penceresinden yeni malzeme ekleyebilirsin.</div>';
     }
 
     async function saveStockOpening(id, value) {
@@ -1496,23 +1559,60 @@
       } catch (e) { alert('Elle girilen fiyat geri alınamadı.'); }
     }
 
+    async function saveMaterialAlias(id, value) {
+      if (!inventoryDb || !inventoryLoaded) return;
+      const alias = String(value || '').trim().replace(/\s+/g, ' ').toLocaleUpperCase('tr-TR');
+      if (!alias || alias.length > 100) { alert('Geçerli bir diğer ad yazın.'); return; }
+      const existing = findMaterialByName(alias);
+      if (existing) { alert(`Bu ad zaten ${existing.name} malzemesinde kayıtlı.`); return; }
+      const item = materialMeta(id);
+      const key = inventoryDb.child(id).child('aliases').push().key;
+      try {
+        await inventoryDb.child(id).update({ name: item.name, unit: item.unit, updatedAt: Date.now(), ['aliases/' + key]: alias });
+      } catch (e) { alert('Diğer ad kaydedilemedi.'); }
+    }
+
+    async function removeMaterialAlias(id, key) {
+      if (!inventoryDb || !inventoryLoaded || !inventory[id] || !Object.prototype.hasOwnProperty.call(inventory[id].aliases || {}, key)) return;
+      try { await inventoryDb.child(id).child('aliases').child(key).remove(); }
+      catch (e) { alert('Diğer ad kaldırılamadı.'); }
+    }
+
+    async function createCustomMaterial(name, unit) {
+      if (!inventoryDb || !inventoryLoaded) throw new Error('Stok listesi henüz hazır değil.');
+      const cleaned = String(name || '').trim().replace(/\s+/g, ' ').toLocaleUpperCase('tr-TR');
+      if (!cleaned || cleaned.length > 100 || !['ADET','METRE','M²','KG','BOY','SET'].includes(unit)) throw new Error('Malzeme adı ve birimini kontrol edin.');
+      const existing = findMaterialByName(cleaned);
+      if (existing) return existing;
+      const created = await inventoryDb.push({ name: cleaned, unit, createdAt: Date.now() });
+      return { id: created.key, name: cleaned, unit };
+    }
+
     async function addCustomMaterial() {
       if (!inventoryDb || !inventoryLoaded) return;
       const name = document.getElementById('stockCustomName').value.trim().toLocaleUpperCase('tr-TR');
       const unit = document.getElementById('stockCustomUnit').value;
-      if (!name || name.length > 100) { alert('Malzeme adı gerekli.'); return; }
-      if (allMaterials().some(item => item.name.toLocaleUpperCase('tr-TR') === name)) { alert('Bu malzeme zaten listede. Arama alanından bulabilirsin.'); return; }
+      const existing = findMaterialByName(name);
+      if (existing) { alert(`Bu malzeme ${existing.name} adıyla listede. Arama alanından bulabilirsin.`); return; }
+      const similar = matchingMaterials(name, 3);
+      if (similar.length && !confirm(`Benzer malzemeler: ${similar.map(item => item.name).join(', ')}. Bu gerçekten farklı bir malzeme mi?`)) return;
       try {
-        await inventoryDb.push({ name, unit, createdAt: Date.now() });
+        await createCustomMaterial(name, unit);
         document.getElementById('stockCustomName').value = '';
         document.getElementById('stockSearch').value = name;
         renderStock();
-      } catch (e) { alert('Malzeme eklenemedi.'); }
+      } catch (e) { alert(e.message || 'Malzeme eklenemedi.'); }
     }
 
     function refreshMaterialOptions() {
       document.getElementById('materialNameOptions').innerHTML = allMaterials()
-        .map(item => `<option value="${esc(item.name)}"></option>`).join('');
+        .flatMap(item => materialNames(item).map(name => `<option value="${esc(name)}"></option>`)).join('');
+    }
+
+    function renderMaterialSuggestions() {
+      const value = document.getElementById('materialNameInput').value;
+      const matches = materialKey(value).length >= 2 ? matchingMaterials(value) : [];
+      document.getElementById('materialSuggestions').innerHTML = matches.map(item => `<button type="button" data-material-choice="${esc(item.id)}">${esc(item.name)} • ${esc(item.unit)}</button>`).join('');
     }
 
     function openMaterialDialog(id) {
@@ -1521,10 +1621,13 @@
       editingMaterialsJobId = id;
       draftJobMaterials = { ...(job.materials || {}) };
       if (!Object.keys(draftJobMaterials).length && !job.materialsBookedAt) draftJobMaterials = defaultMaterialsForTask(job.task);
-      document.getElementById('materialJobInfo').textContent = `${job.plate || '-'} • ${job.task || '-'} • ${job.materialsBookedAt ? 'Kullanım stoktan düşmüş' : 'İş bitince stoktan düşecek'}`;
+      document.getElementById('materialJobInfo').textContent = `${job.plate || '-'} • ${job.task || '-'} • ${materialReviewPending(job) ? 'Fiş kontrolü bekliyor; görünen stok geçici' : job.materialsBookedAt ? 'Kullanım stoktan düşmüş' : 'İş bitince stoktan düşecek'}`;
       document.getElementById('materialNameInput').value = '';
       document.getElementById('materialQtyInput').value = '';
+      document.getElementById('materialUnitInput').value = 'ADET';
+      document.getElementById('materialSaveBtn').textContent = job.status === 2 || job.status === 3 ? 'FİŞİ KONTROL ET VE KAYDET' : 'MALZEMELERİ KAYDET';
       refreshMaterialOptions();
+      renderMaterialSuggestions();
       renderDraftJobMaterials();
       document.getElementById('materialOverlay').style.display = 'block';
     }
@@ -1544,15 +1647,28 @@
       }).join('') : '<div class="quote-empty">Henüz malzeme seçilmedi.</div>';
     }
 
-    function addDraftJobMaterial() {
-      const name = document.getElementById('materialNameInput').value.trim().toLocaleUpperCase('tr-TR');
+    async function addDraftJobMaterial() {
+      const name = document.getElementById('materialNameInput').value.trim();
       const qty = parseDecimalInput(document.getElementById('materialQtyInput').value);
-      const item = allMaterials().find(entry => entry.name.toLocaleUpperCase('tr-TR') === name);
-      if (!item) { alert('Malzemeyi listeden seçin veya STOK ekranından yeni malzeme ekleyin.'); return; }
+      if (!name) { alert('Malzeme adını yazın.'); return; }
       if (!Number.isFinite(qty) || qty <= 0 || qty > 1000000) { alert('Geçerli bir miktar girin.'); return; }
+      let item = findMaterialByName(name);
+      if (!item) {
+        const similar = matchingMaterials(name, 3);
+        const warning = similar.length ? `Benzerleri: ${similar.map(entry => entry.name).join(', ')}. ` : '';
+        if (!confirm(`${warning}${name.toLocaleUpperCase('tr-TR')} yeni malzeme olarak stok listesine eklensin mi?`)) return;
+        const button = document.getElementById('materialAddBtn');
+        button.disabled = true;
+        try {
+          item = await createCustomMaterial(name, document.getElementById('materialUnitInput').value);
+          refreshMaterialOptions();
+        } catch (e) { alert(e.message || 'Yeni malzeme kaydedilemedi.'); return; }
+        finally { button.disabled = false; }
+      }
       draftJobMaterials[item.id] = (draftJobMaterials[item.id] || 0) + qty;
       document.getElementById('materialNameInput').value = '';
       document.getElementById('materialQtyInput').value = '';
+      renderMaterialSuggestions();
       renderDraftJobMaterials();
     }
 
@@ -1564,6 +1680,7 @@
       button.disabled = true;
       const payload = { materials: draftJobMaterials };
       if (!job.materialsBookedAt && (job.status === 2 || job.status === 3)) payload.materialsBookedAt = Date.now();
+      if (job.status === 2 || job.status === 3) payload.materialsReviewedAt = Date.now();
       try { await db.child(editingMaterialsJobId).update(payload); closeMaterialDialog(); }
       catch (e) { alert('Malzeme kullanımı kaydedilemedi.'); }
       finally { button.disabled = false; }
@@ -1674,9 +1791,9 @@
       const oldStatus = job.status;
       if (oldStatus === newStatus && !job.cancelledAt && !job.deletedAt) return; // İptal/silinen iş aynı durumdan geri alınabilir.
 
-      if (newStatus === 2 && !job.materialsBookedAt) {
+      if ((newStatus === 2 || newStatus === 3) && !job.materialsBookedAt) {
         const entries = Object.entries(job.materials || {}).filter(([,qty]) => Number(qty) > 0);
-        if (!entries.length && !confirm('Bu işte malzeme seçilmedi. Yine de işi bitirmek istiyor musun?')) return;
+        if (!entries.length && !confirm('Bu işte malzeme seçilmedi. İş bittikten sonra fişi stok ekranından kontrol edebilirsin. Devam edilsin mi?')) return;
         const shortages = entries.filter(([id,qty]) => {
           const stock = stockNumbers(id);
           return stock.balance !== null && stock.balance < Number(qty);
@@ -1720,7 +1837,11 @@
         lastStartTimeMs: lastStartTimeMs,
         history: history
       };
-      if (newStatus === 2 && !job.materialsBookedAt) payload.materialsBookedAt = Date.now();
+      if ((newStatus === 2 || newStatus === 3) && !job.materialsBookedAt) payload.materialsBookedAt = Date.now();
+      if (newStatus === 2 || (newStatus === 3 && oldStatus !== 2 && oldStatus !== 3)) {
+        payload.materialsReviewRequiredAt = Date.now();
+        payload.materialsReviewedAt = null;
+      }
       if (newStatus === 0) {
         if (job.cancelledAt) payload.cancelledAt = null;
         if (job.deletedAt) payload.deletedAt = null;
@@ -1855,6 +1976,10 @@
     document.getElementById('stockSearch').addEventListener('input', renderStock);
     document.getElementById('stockShowProfiles').addEventListener('change', renderStock);
     document.getElementById('stockCustomAddBtn').addEventListener('click', addCustomMaterial);
+    document.getElementById('stockReviewList').addEventListener('click', e => {
+      const button = e.target.closest('[data-review-job]');
+      if (button) openMaterialDialog(button.dataset.reviewJob);
+    });
     document.getElementById('stockList').addEventListener('click', e => {
       const button = e.target.closest('[data-stock-act]');
       if (!button) return;
@@ -1868,7 +1993,19 @@
         resetStockPrice(button.dataset.id).finally(() => { button.disabled = false; });
         return;
       }
+      if (button.dataset.stockAct === 'remove-alias') {
+        button.disabled = true;
+        removeMaterialAlias(button.dataset.id, button.dataset.aliasKey).finally(() => { button.disabled = false; });
+        return;
+      }
       const card = button.closest('[data-stock-id]');
+      if (button.dataset.stockAct === 'alias') {
+        const input = card && card.querySelector('[data-stock-alias]');
+        if (!input) return;
+        button.disabled = true;
+        saveMaterialAlias(button.dataset.id, input.value).finally(() => { button.disabled = false; });
+        return;
+      }
       if (button.dataset.stockAct === 'price') {
         const priceInput = card && card.querySelector('[data-stock-price]');
         const currencyInput = card && card.querySelector('[data-stock-price-currency]');
@@ -1885,6 +2022,15 @@
       action(button.dataset.id, input.value).finally(() => { button.disabled = false; });
     });
     document.getElementById('materialCloseBtn').addEventListener('click', closeMaterialDialog);
+    document.getElementById('materialNameInput').addEventListener('input', renderMaterialSuggestions);
+    document.getElementById('materialSuggestions').addEventListener('click', e => {
+      const button = e.target.closest('[data-material-choice]');
+      if (!button) return;
+      const item = materialMeta(button.dataset.materialChoice);
+      document.getElementById('materialNameInput').value = item.name;
+      renderMaterialSuggestions();
+      document.getElementById('materialQtyInput').focus();
+    });
     document.getElementById('materialAddBtn').addEventListener('click', addDraftJobMaterial);
     document.getElementById('materialSaveBtn').addEventListener('click', saveJobMaterials);
     document.getElementById('materialDraftList').addEventListener('click', e => {
