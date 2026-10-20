@@ -1428,7 +1428,8 @@
     }
 
     function materialReviewPending(job) {
-      return job && (job.status === 2 || job.status === 3) && job.materialsReviewRequiredAt && !job.materialsReviewedAt && !job.cancelledAt && !job.deletedAt;
+      return !!(job && (job.status === 2 || job.status === 3) && !job.materialsReviewedAt && !job.cancelledAt && !job.deletedAt
+        && (job.materialsReviewRequiredAt || job.status === 2));
     }
 
     function renderStockReviews() {
@@ -1838,7 +1839,7 @@
         history: history
       };
       if ((newStatus === 2 || newStatus === 3) && !job.materialsBookedAt) payload.materialsBookedAt = Date.now();
-      if (newStatus === 2 || (newStatus === 3 && oldStatus !== 2 && oldStatus !== 3)) {
+      if (newStatus === 2 || (newStatus === 3 && oldStatus !== 3 && (oldStatus !== 2 || materialReviewPending(job)))) {
         payload.materialsReviewRequiredAt = Date.now();
         payload.materialsReviewedAt = null;
       }
