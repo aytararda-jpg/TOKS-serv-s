@@ -17,7 +17,7 @@ function emit(){for(const [path,arr] of Object.entries(listeners))for(const fn o
 class Ref{constructor(path=''){this.path=path}child(key){return new Ref([this.path,key].filter(Boolean).join('/'))}on(type,fn){(listeners[this.path]??=[]).push(fn);fn({val:()=>get(this.path)})}push(value){const key='q'+(++seq);if(value===undefined)return {key};set(this.path+'/'+key,value);emit();return Promise.resolve({key})}update(values){for(const [key,value] of Object.entries(values))set([this.path,key].filter(Boolean).join('/'),value);emit();return Promise.resolve()}remove(){set(this.path,null);emit();return Promise.resolve()}}
 const authInstance={setPersistence:()=>Promise.resolve(),onAuthStateChanged:fn=>fn({uid:'test'}),signInWithEmailAndPassword:()=>Promise.resolve(),signOut:()=>Promise.resolve()};
 function auth(){return authInstance}auth.Auth={Persistence:{LOCAL:'local'}};
-const alerts=[]; let savedPdf='';
+const alerts=[], confirmations=[]; let savedPdf='';
 class MockPDF { setFont(){} setFontSize(){} setTextColor(){} text(){} setDrawColor(){} setFillColor(){} setLineWidth(){} line(){} roundedRect(){} splitTextToSize(text){return [text]} save(name){savedPdf=name} }
 const context=vm.createContext({
  document:{getElementById:id=>elements[id],querySelectorAll:()=>[]},
@@ -25,7 +25,7 @@ const context=vm.createContext({
  firebase:{initializeApp(){},auth,database:()=>({ref:(path='')=>new Ref(path)})},
  localStorage:{getItem:()=>null,setItem(){}},
  fetch:()=>Promise.resolve({json:()=>Promise.resolve({rates:{TRY:50}})}),
- Chart:class{destroy(){}},setInterval(){},alert:msg=>alerts.push(msg),confirm:()=>true,
+ Chart:class{destroy(){}},setInterval(){},alert:msg=>alerts.push(msg),confirm:msg=>{confirmations.push(msg);return true},
  console, Date, Number, String, Object, Math, Promise, Intl, isFinite, parseFloat
 });
 vm.runInContext(script,context);
@@ -250,6 +250,9 @@ const run=s=>vm.runInContext(s,context);
  assert.equal(run('findMaterialByName("branda yama").id'),'basic_branda_yamasi');
  assert.equal(run('findMaterialByName("BRANDA YAMASI").id'),'basic_branda_yamasi');
  assert.equal(run('findMaterialByName("BABA SABİTLEME DEMİRİ").id'),'basic_baba_sabitleme_demiri');
+ assert.ok(html.indexOf('id="stockCustomPanel"') < html.indexOf('id="stockList"'));
+ assert.match(html, /id="materialNameInput"[^>]*autocomplete="off"/);
+ assert.doesNotMatch(html, /id="materialNameInput"[^>]*list=/);
  data.toks_jobs.review={plate:'34 FIS 01',firm:'DENEME',task:'BRANDA TAMİR',status:2,materialsBookedAt:123,materialsReviewRequiredAt:123,materials:{}};
  emit();
  run('switchTab("stock")');
@@ -257,12 +260,19 @@ const run=s=>vm.runInContext(s,context);
  run('openMaterialDialog("review")');
  elements.materialNameInput.value='branda yama';
  elements.materialQtyInput.value='1';
+ run('renderMaterialSuggestions()');
+ assert.equal(elements.materialAddBtn.textContent,'LİSTEDEN FİŞE EKLE');
+ assert.equal(elements.materialUnitInput.disabled,true);
  await run('addDraftJobMaterial()');
  assert.equal(run('draftJobMaterials.basic_branda_yamasi'),1);
  elements.materialNameInput.value='TEST YENİ PARÇA';
  elements.materialQtyInput.value='2';
  elements.materialUnitInput.value='ADET';
+ run('renderMaterialSuggestions()');
+ assert.equal(elements.materialAddBtn.textContent,'YENİ MALZEMEYİ FİŞE EKLE');
+ const confirmationsBeforeNew=confirmations.length;
  await run('addDraftJobMaterial()');
+ assert.equal(confirmations.length,confirmationsBeforeNew);
  const customId=Object.keys(data.toks_inventory).find(id=>data.toks_inventory[id].name==='TEST YENİ PARÇA');
  assert.ok(customId);
  assert.equal(run(`draftJobMaterials[${JSON.stringify(customId)}]`),2);
@@ -291,8 +301,14 @@ const run=s=>vm.runInContext(s,context);
  elements.stockCustomName.value='TEST PARÇASI';
  await run('addCustomMaterial()');
  assert.equal(Object.keys(data.toks_inventory).filter(id=>data.toks_inventory[id].name==='TEST PARÇASI').length,0);
- assert.match(alerts.at(-1),/listede/);
- alerts.pop();
+ assert.match(elements.stockCustomMessage.textContent,/listede/);
+ elements.stockCustomName.value='YENİ METRE MALZEME';
+ elements.stockCustomUnit.value='METRE';
+ await run('addCustomMaterial()');
+ const standalone=Object.values(data.toks_inventory).find(item=>item.name==='YENİ METRE MALZEME');
+ assert.equal(standalone.unit,'METRE');
+ assert.match(elements.stockCustomMessage.textContent,/eklendi/);
+ assert.match(elements.stockList.innerHTML,/YENİ METRE MALZEME/);
  assert.deepEqual(alerts,[]);
  console.log('PASS: budgets, quote conversion, stock receipt, material aliases, new materials, receipt review, finish/cancel/delete/restore');
 })().catch(e=>{console.error(e);process.exitCode=1});

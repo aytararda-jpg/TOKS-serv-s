@@ -137,8 +137,11 @@
     .stock-unknown { color:#94a3b8; }
     .material-overlay { display:none; position:fixed; inset:0; z-index:110; background:rgba(0,0,0,.85); padding:15px; overflow:auto; }
     .material-dialog { max-width:620px; margin:45px auto; background:#0a1420; border:2px solid var(--toks-yellow); border-radius:8px; padding:16px; }
-    .material-dialog .input-row input:first-child { flex:3; }
-    .material-dialog .input-row input:nth-child(2) { flex:1; }
+    .material-entry-box { margin:14px 0; padding:12px; border:1px solid var(--border); border-radius:6px; background:#0d1b2b; }
+    .material-entry-box .modal-title { font-size:0.9rem; margin-bottom:8px; }
+    .material-entry-box input, .material-entry-box select { width:100%; }
+    .material-entry-box .field-label { margin-top:8px; }
+    .material-entry-box .btn { margin-top:10px; }
     .material-suggestions { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
     .material-suggestions button { width:auto; padding:6px 9px; font-size:0.7rem; background:#15263a; color:#fff; border:1px solid var(--border); border-radius:4px; cursor:pointer; }
     .stock-review-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.78rem; }
@@ -319,6 +322,17 @@
       <div class="form-note">İş bitmiş ama fişte kullanılan malzemeler henüz onaylanmamış. Stok kesinleşmesi için her işin malzemesini kontrol et.</div>
       <div id="stockReviewList"></div>
     </div>
+    <div class="input-panel" id="stockCustomPanel">
+      <div class="modal-title">YENİ MALZEME EKLE</div>
+      <div class="form-note">Listede olmayan malzemenin adını serbestçe yaz. Fiyatını ve gerçek stok sayısını daha sonra girebilirsin.</div>
+      <label class="field-label" for="stockCustomName">MALZEME ADI</label>
+      <input type="text" id="stockCustomName" maxlength="100" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ÖRN. YENİ BİR PARÇA ADI">
+      <div id="stockCustomHint" class="form-note"></div>
+      <label class="field-label" for="stockCustomUnit">BİRİMİ</label>
+      <select id="stockCustomUnit" aria-label="Malzeme birimi"><option>ADET</option><option>METRE</option><option>M²</option><option>KG</option><option>BOY</option><option>SET</option></select>
+      <div id="stockCustomMessage" class="form-note" role="status"></div>
+      <button class="btn" id="stockCustomAddBtn">YENİ MALZEMEYİ KAYDET</button>
+    </div>
     <div class="input-panel">
       <div class="modal-title">MALZEME STOK TAKİBİ</div>
       <div class="form-note">Malzeme adları, birimleri ve birim satış fiyatları 27.02.2026 tarihli listeden alındı. Euro, TL ve Dolar fiyatları listedeki para birimleriyle gösterilir. Kaynakta fiyatı olmayanlar boş bırakılır. Kullanım iş bitince düşer; iptal veya silme stoku geri getirir. Fiş kontrolü bekleyen işlerde stok miktarı geçici olabilir.</div>
@@ -327,15 +341,6 @@
       <div id="stockMessage" class="form-note"></div>
     </div>
     <div class="stock-list" id="stockList"></div>
-    <div class="input-panel" style="margin-top:15px;">
-      <div class="modal-title">LİSTEDE OLMAYAN MALZEME</div>
-      <div class="input-row">
-        <input type="text" id="stockCustomName" maxlength="100" placeholder="MALZEME ADI">
-        <select id="stockCustomUnit" aria-label="Malzeme birimi"><option>ADET</option><option>METRE</option><option>M²</option><option>KG</option><option>BOY</option><option>SET</option></select>
-      </div>
-      <div class="form-note">Aynı malzemeyi farklı adla kullanıyorsan malzemenin satırındaki “DİĞER AD EKLE” alanını kullan.</div>
-      <button class="btn" id="stockCustomAddBtn">MALZEMEYİ EKLE</button>
-    </div>
   </div>
 
   <div id="view-budget" style="display:none;">
@@ -400,16 +405,19 @@
       </div>
       <div class="form-note" id="materialJobInfo"></div>
       <div id="materialDraftList"></div>
-      <div class="input-row" style="margin-top:12px;">
-        <input type="text" id="materialNameInput" list="materialNameOptions" maxlength="100" placeholder="MALZEME ADI YAZ / SEÇ">
-        <datalist id="materialNameOptions"></datalist>
-        <input type="text" inputmode="decimal" id="materialQtyInput" placeholder="ADET / MİKTAR">
+      <div class="material-entry-box">
+        <div class="modal-title">FİŞE MALZEME EKLE</div>
+        <div class="form-note">Malzeme adını serbestçe yaz. Listede varsa aynı stok kaydı seçilir; yoksa yeni malzeme açılır.</div>
+        <label class="field-label" for="materialNameInput">MALZEME ADI</label>
+        <input type="text" id="materialNameInput" maxlength="100" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ÖRN. BABA SABİTLEME DEMİRİ">
+        <div id="materialSuggestions" class="material-suggestions"></div>
+        <div class="input-row">
+          <div style="flex:1;"><label class="field-label" for="materialQtyInput">KULLANILAN MİKTAR</label><input type="text" inputmode="decimal" id="materialQtyInput" placeholder="ÖRN. 2"></div>
+          <div style="flex:1;"><label class="field-label" for="materialUnitInput">BİRİMİ</label><select id="materialUnitInput" aria-label="Malzeme birimi"><option>ADET</option><option>METRE</option><option>M²</option><option>KG</option><option>BOY</option><option>SET</option></select></div>
+        </div>
+        <button class="btn" id="materialAddBtn">MALZEMEYİ FİŞE EKLE</button>
       </div>
-      <div id="materialSuggestions" class="material-suggestions"></div>
-      <div class="form-note">Listede yoksa adı, miktarı ve birimi yaz. Malzeme stok listesine de eklenir. Fişi kontrol edip kaydettiğinde stok güncellenir.</div>
-      <label class="field-label" for="materialUnitInput">YENİ MALZEMENİN BİRİMİ</label>
-      <select id="materialUnitInput" aria-label="Yeni malzemenin birimi"><option>ADET</option><option>METRE</option><option>M²</option><option>KG</option><option>BOY</option><option>SET</option></select>
-      <button class="btn" id="materialAddBtn">MALZEME EKLE</button>
+      <div id="materialFeedback" class="form-note" role="status"></div>
       <button class="btn" id="materialSaveBtn" style="background:var(--green);">FİŞİ KONTROL ET VE KAYDET</button>
     </div>
   </div>
@@ -1590,30 +1598,52 @@
     }
 
     async function addCustomMaterial() {
-      if (!inventoryDb || !inventoryLoaded) return;
+      const message = document.getElementById('stockCustomMessage');
+      message.textContent = '';
+      if (!inventoryDb || !inventoryLoaded) { message.textContent = inventoryError || 'Stok listesi yükleniyor; birazdan tekrar dene.'; return; }
       const name = document.getElementById('stockCustomName').value.trim().toLocaleUpperCase('tr-TR');
       const unit = document.getElementById('stockCustomUnit').value;
+      if (!name) { message.textContent = 'Önce malzemenin adını yaz.'; document.getElementById('stockCustomName').focus(); return; }
       const existing = findMaterialByName(name);
-      if (existing) { alert(`Bu malzeme ${existing.name} adıyla listede. Arama alanından bulabilirsin.`); return; }
-      const similar = matchingMaterials(name, 3);
-      if (similar.length && !confirm(`Benzer malzemeler: ${similar.map(item => item.name).join(', ')}. Bu gerçekten farklı bir malzeme mi?`)) return;
-      try {
-        await createCustomMaterial(name, unit);
-        document.getElementById('stockCustomName').value = '';
-        document.getElementById('stockSearch').value = name;
+      if (existing) {
+        document.getElementById('stockSearch').value = existing.name;
+        message.textContent = `Bu malzeme ${existing.name} adıyla listede. Aşağıda gösteriliyor.`;
         renderStock();
-      } catch (e) { alert(e.message || 'Malzeme eklenemedi.'); }
+        return;
+      }
+      const button = document.getElementById('stockCustomAddBtn');
+      button.disabled = true;
+      try {
+        const item = await createCustomMaterial(name, unit);
+        document.getElementById('stockCustomName').value = '';
+        document.getElementById('stockSearch').value = item.name;
+        message.textContent = `${item.name} eklendi. Aşağıda stok sayısını ve fiyatını girebilirsin.`;
+        renderStockCustomHint();
+        renderStock();
+      } catch (e) { message.textContent = e.message || 'Malzeme eklenemedi.'; }
+      finally { button.disabled = false; }
     }
 
-    function refreshMaterialOptions() {
-      document.getElementById('materialNameOptions').innerHTML = allMaterials()
-        .flatMap(item => materialNames(item).map(name => `<option value="${esc(name)}"></option>`)).join('');
+    function renderStockCustomHint() {
+      const name = document.getElementById('stockCustomName').value;
+      const existing = findMaterialByName(name);
+      const similar = !existing && materialKey(name).length >= 3 ? matchingMaterials(name, 3) : [];
+      document.getElementById('stockCustomHint').textContent = existing ? `Listede ${existing.name} olarak var.`
+        : similar.length ? `Benzerleri: ${similar.map(item => item.name).join(', ')}. Aynı parçaysa yeniden ekleme.`
+        : materialKey(name) ? 'Yeni malzeme olarak kaydedilecek.' : '';
     }
 
     function renderMaterialSuggestions() {
       const value = document.getElementById('materialNameInput').value;
+      const existing = findMaterialByName(value);
       const matches = materialKey(value).length >= 2 ? matchingMaterials(value) : [];
-      document.getElementById('materialSuggestions').innerHTML = matches.map(item => `<button type="button" data-material-choice="${esc(item.id)}">${esc(item.name)} • ${esc(item.unit)}</button>`).join('');
+      document.getElementById('materialSuggestions').innerHTML = matches.length
+        ? matches.map(item => `<button type="button" data-material-choice="${esc(item.id)}">${esc(item.name)} • ${esc(item.unit)}</button>`).join('')
+        : materialKey(value).length >= 2 ? '<span class="form-note">Listede yok; yeni malzeme olarak eklenecek.</span>' : '';
+      const unit = document.getElementById('materialUnitInput');
+      if (existing) unit.value = existing.unit;
+      unit.disabled = !!existing;
+      document.getElementById('materialAddBtn').textContent = existing ? 'LİSTEDEN FİŞE EKLE' : materialKey(value) ? 'YENİ MALZEMEYİ FİŞE EKLE' : 'MALZEMEYİ FİŞE EKLE';
     }
 
     function openMaterialDialog(id) {
@@ -1626,8 +1656,9 @@
       document.getElementById('materialNameInput').value = '';
       document.getElementById('materialQtyInput').value = '';
       document.getElementById('materialUnitInput').value = 'ADET';
+      document.getElementById('materialUnitInput').disabled = false;
+      document.getElementById('materialFeedback').textContent = '';
       document.getElementById('materialSaveBtn').textContent = job.status === 2 || job.status === 3 ? 'FİŞİ KONTROL ET VE KAYDET' : 'MALZEMELERİ KAYDET';
-      refreshMaterialOptions();
       renderMaterialSuggestions();
       renderDraftJobMaterials();
       document.getElementById('materialOverlay').style.display = 'block';
@@ -1651,26 +1682,25 @@
     async function addDraftJobMaterial() {
       const name = document.getElementById('materialNameInput').value.trim();
       const qty = parseDecimalInput(document.getElementById('materialQtyInput').value);
-      if (!name) { alert('Malzeme adını yazın.'); return; }
-      if (!Number.isFinite(qty) || qty <= 0 || qty > 1000000) { alert('Geçerli bir miktar girin.'); return; }
-      let item = findMaterialByName(name);
-      if (!item) {
-        const similar = matchingMaterials(name, 3);
-        const warning = similar.length ? `Benzerleri: ${similar.map(entry => entry.name).join(', ')}. ` : '';
-        if (!confirm(`${warning}${name.toLocaleUpperCase('tr-TR')} yeni malzeme olarak stok listesine eklensin mi?`)) return;
-        const button = document.getElementById('materialAddBtn');
-        button.disabled = true;
-        try {
-          item = await createCustomMaterial(name, document.getElementById('materialUnitInput').value);
-          refreshMaterialOptions();
-        } catch (e) { alert(e.message || 'Yeni malzeme kaydedilemedi.'); return; }
-        finally { button.disabled = false; }
-      }
-      draftJobMaterials[item.id] = (draftJobMaterials[item.id] || 0) + qty;
-      document.getElementById('materialNameInput').value = '';
-      document.getElementById('materialQtyInput').value = '';
-      renderMaterialSuggestions();
-      renderDraftJobMaterials();
+      const unit = document.getElementById('materialUnitInput').value;
+      const feedback = document.getElementById('materialFeedback');
+      if (!name) { feedback.textContent = 'Malzeme adını yaz.'; document.getElementById('materialNameInput').focus(); return; }
+      if (!Number.isFinite(qty) || qty <= 0 || qty > 1000000) { feedback.textContent = 'Geçerli bir kullanılan miktar yaz.'; return; }
+      const button = document.getElementById('materialAddBtn');
+      const saveButton = document.getElementById('materialSaveBtn');
+      button.disabled = true;
+      saveButton.disabled = true;
+      try {
+        const item = await createCustomMaterial(name, unit);
+        draftJobMaterials[item.id] = (draftJobMaterials[item.id] || 0) + qty;
+        document.getElementById('materialNameInput').value = '';
+        document.getElementById('materialQtyInput').value = '';
+        document.getElementById('materialUnitInput').value = 'ADET';
+        feedback.textContent = `${item.name} fişe eklendi. Kaydetmek için alttaki yeşil düğmeye bas.`;
+        renderMaterialSuggestions();
+        renderDraftJobMaterials();
+      } catch (e) { feedback.textContent = e.message || 'Malzeme eklenemedi.'; }
+      finally { button.disabled = false; saveButton.disabled = false; }
     }
 
     async function saveJobMaterials() {
@@ -1976,6 +2006,7 @@
 
     document.getElementById('stockSearch').addEventListener('input', renderStock);
     document.getElementById('stockShowProfiles').addEventListener('change', renderStock);
+    document.getElementById('stockCustomName').addEventListener('input', renderStockCustomHint);
     document.getElementById('stockCustomAddBtn').addEventListener('click', addCustomMaterial);
     document.getElementById('stockReviewList').addEventListener('click', e => {
       const button = e.target.closest('[data-review-job]');
