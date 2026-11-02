@@ -18,12 +18,13 @@ class Ref{constructor(path=''){this.path=path}child(key){return new Ref([this.pa
 const authInstance={setPersistence:()=>Promise.resolve(),onAuthStateChanged:fn=>fn({uid:'test'}),signInWithEmailAndPassword:()=>Promise.resolve(),signOut:()=>Promise.resolve()};
 function auth(){return authInstance}auth.Auth={Persistence:{LOCAL:'local'}};
 const alerts=[], confirmations=[]; let savedPdf='';
+const savedLocal={};
 class MockPDF { setFont(){} setFontSize(){} setTextColor(){} text(){} setDrawColor(){} setFillColor(){} setLineWidth(){} line(){} roundedRect(){} splitTextToSize(text){return [text]} save(name){savedPdf=name} }
 const context=vm.createContext({
  document:{getElementById:id=>elements[id],querySelectorAll:()=>[]},
  window:{scrollTo(){},location:{reload(){}},jspdf:{jsPDF:MockPDF}},
  firebase:{initializeApp(){},auth,database:()=>({ref:(path='')=>new Ref(path)})},
- localStorage:{getItem:()=>null,setItem(){}},
+ localStorage:{getItem:key=>savedLocal[key]??null,setItem:(key,value)=>{savedLocal[key]=value},removeItem:key=>{delete savedLocal[key]}},
  fetch:()=>Promise.resolve({json:()=>Promise.resolve({rates:{TRY:50}})}),
  Chart:class{destroy(){}},setInterval(){},alert:msg=>alerts.push(msg),confirm:msg=>{confirmations.push(msg);return true},
  console, Date, Number, String, Object, Math, Promise, Intl, isFinite, parseFloat
@@ -133,6 +134,49 @@ const run=s=>vm.runInContext(s,context);
  assert.equal(newJob.business,'KAYATAR');
  assert.equal(newJob.cashReceivedTRY,1250.5);
  assert.equal(newJob.receipt,'000123');
+ run('currentEuroRate = 50; currentEuroRateFresh = true');
+ assert.equal(run(`selectCalcJob(${JSON.stringify(newJobId)})`),true);
+ assert.match(elements.calcSelectedJob.textContent,/000123/);
+ run('pickCalcMaterial("xlsm_113")');
+ assert.equal(elements.calcAddPrice.value,'19,25');
+ assert.equal(elements.calcAddCurrency.value,'EUR');
+ elements.calcAddQty.value='3';
+ run('addCalcLine()');
+ assert.equal(run('calcDraftTotal(calcDraft)'),2887.5);
+ assert.ok(savedLocal.toks_receipt_calc_draft_v1);
+ run('pickCalcMaterial("xlsm_16")');
+ elements.calcAddQty.value='2';
+ run('addCalcLine()');
+ assert.equal(run('calcDraftTotal(calcDraft)'),null);
+ run('calcDraft.usdRate = "40"');
+ run('pickCalcMaterial("xlsm_211")');
+ elements.calcAddQty.value='40';
+ run('addCalcLine()');
+ assert.equal(run('calcDraftTotal(calcDraft)'),4944.3);
+ run('calcDraft.date = "2026-10-01"');
+ const priceBeforeCalc=data.toks_jobs[newJobId].price;
+ await run('saveCalc()');
+ assert.equal(data.toks_jobs[newJobId].price,priceBeforeCalc);
+ assert.equal(data.toks_jobs[newJobId].basePrice,750.5);
+ assert.equal(data.toks_jobs[newJobId].receiptCalc.date,'2026-10-01');
+ assert.equal(data.toks_jobs[newJobId].receiptCalc.eurRate,50);
+ assert.equal(data.toks_jobs[newJobId].receiptCalc.usdRate,40);
+ assert.equal(data.toks_jobs[newJobId].receiptCalc.totalTRY,4944.3);
+ assert.equal(data.toks_jobs[newJobId].receiptCalc.lines[0].name,'BABA MAKARASI (ÇELİK RAYI)');
+ assert.equal(savedLocal.toks_receipt_calc_draft_v1,undefined);
+ run('currentEuroRateFresh = false');
+ run('selectCalcJob("old")');
+ assert.equal(elements.calcEuroRate.value,'');
+ run('pickCalcMaterial("xlsm_211")');
+ elements.calcAddQty.value='1';
+ run('addCalcLine()');
+ assert.ok(savedLocal.toks_receipt_calc_draft_v1);
+ run('calcJobId = null; calcDraft = null; calcDirty = false; renderCalcJobChoices()');
+ assert.equal(run('calcJobId'),'old');
+ assert.equal(run('calcDraft.lines.length'),1);
+ run(`selectCalcJob(${JSON.stringify(newJobId)})`);
+ assert.equal(run('calcDraftTotal(calcDraft)'),4944.3);
+ assert.equal(savedLocal.toks_receipt_calc_draft_v1,undefined);
  run('switchTab("active")');
  assert.match(elements.jobList.innerHTML,/KAYATAR İŞİ/);
  assert.match(elements.jobList.innerHTML,/Alınan nakit: 1\.250,50/);
@@ -310,5 +354,5 @@ const run=s=>vm.runInContext(s,context);
  assert.match(elements.stockCustomMessage.textContent,/eklendi/);
  assert.match(elements.stockList.innerHTML,/YENİ METRE MALZEME/);
  assert.deepEqual(alerts,[]);
- console.log('PASS: budgets, quote conversion, stock receipt, material aliases, new materials, receipt review, finish/cancel/delete/restore');
+ console.log('PASS: budgets, quotes, stock, receipt calculator save/restore, finish/cancel/delete/restore');
 })().catch(e=>{console.error(e);process.exitCode=1});

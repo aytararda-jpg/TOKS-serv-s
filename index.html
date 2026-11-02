@@ -135,6 +135,13 @@
     .stock-negative { color:var(--red); }
     .stock-positive { color:var(--green); }
     .stock-unknown { color:#94a3b8; }
+    .calc-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .calc-line { background:#0f172a; border:1px solid var(--border); border-radius:6px; padding:10px; margin:8px 0; }
+    .calc-line-head { display:flex; align-items:center; justify-content:space-between; gap:8px; color:var(--toks-yellow); font-size:0.78rem; font-weight:bold; }
+    .calc-line-fields { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:8px; }
+    .calc-line-total { margin-top:8px; color:var(--green); font-weight:bold; font-size:0.85rem; }
+    .calc-choice { display:block; width:100%; text-align:left; background:#15263a; color:#fff; border:1px solid var(--border); border-radius:4px; padding:9px; margin:4px 0; cursor:pointer; }
+    .calc-remove { width:auto; background:none; border:1px solid var(--orange); color:var(--orange); border-radius:4px; padding:5px 7px; cursor:pointer; }
     .material-overlay { display:none; position:fixed; inset:0; z-index:110; background:rgba(0,0,0,.85); padding:15px; overflow:auto; }
     .material-dialog { max-width:620px; margin:45px auto; background:#0a1420; border:2px solid var(--toks-yellow); border-radius:8px; padding:16px; }
     .material-entry-box { margin:14px 0; padding:12px; border:1px solid var(--border); border-radius:6px; background:#0d1b2b; }
@@ -146,7 +153,7 @@
     .material-suggestions button { width:auto; padding:6px 9px; font-size:0.7rem; background:#15263a; color:#fff; border:1px solid var(--border); border-radius:4px; cursor:pointer; }
     .stock-review-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.78rem; }
     .stock-review-row button { width:auto; padding:7px 10px; border:1px solid var(--toks-yellow); border-radius:4px; background:#0f172a; color:var(--toks-yellow); font-weight:bold; cursor:pointer; }
-    @media (max-width:540px) { .input-row { flex-direction:column; } .input-row > *, #priceContainer { width:100% !important; } .quote-toolbar { flex-direction:column; } .tab { font-size:0.62rem; } .material-dialog { margin:10px auto; } }
+    @media (max-width:540px) { .input-row { flex-direction:column; } .input-row > *, #priceContainer { width:100% !important; } .quote-toolbar { flex-direction:column; } .tabs { flex-wrap:wrap; } .tab { flex:1 1 30%; font-size:0.62rem; } .material-dialog { margin:10px auto; } .calc-line-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
     /* GİRİŞ EKRANI */
     #loginOverlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 9999; justify-content: center; align-items: center; }
@@ -192,6 +199,7 @@
     <div class="tab" id="tab-quotes">TEKLİFLER</div>
     <div class="tab" id="tab-archive">ARŞİV</div>
     <div class="tab" id="tab-stock">STOK</div>
+    <div class="tab" id="tab-calc">FİŞ HESABI</div>
     <div class="tab" id="tab-budget">BÜTÇE</div>
   </div>
 
@@ -343,6 +351,48 @@
     <div class="stock-list" id="stockList"></div>
   </div>
 
+  <div id="view-calc" style="display:none;">
+    <div class="input-panel">
+      <div class="modal-title">FİŞ KALEM HESABI</div>
+      <div class="form-note">Malzeme fiyatını listeden bul, miktarı ve fiş kurunu gir. Hesap seçilen fişte saklanır. İşin toplam fiyatı, bütçe ve stok kullanımı bu hesapla değişmez.</div>
+      <label class="field-label" for="calcJobSearch">FİŞ / PLAKA / FİRMA ARA</label>
+      <input type="search" id="calcJobSearch" autocomplete="off" placeholder="ÖRN. 350052 VEYA PLAKA">
+      <div id="calcJobChoices"></div>
+      <div id="calcSelectedJob" class="form-note">Önce fiş seçin.</div>
+    </div>
+    <div id="calcEditor" style="display:none;">
+      <div class="input-panel">
+        <div class="calc-grid">
+          <div><label class="field-label" for="calcDate">FİŞ TARİHİ</label><input type="date" id="calcDate"></div>
+          <div><label class="field-label" for="calcEuroRate">1 € KAÇ TL?</label><input type="text" inputmode="decimal" id="calcEuroRate" placeholder="ÖRN. 50,25"></div>
+          <div id="calcDollarRateWrap" style="display:none;"><label class="field-label" for="calcDollarRate">1 $ KAÇ TL?</label><input type="text" inputmode="decimal" id="calcDollarRate" placeholder="DOLAR KURU"></div>
+        </div>
+        <div id="calcRateNote" class="form-note"></div>
+      </div>
+      <div class="input-panel">
+        <div class="modal-title">MALZEME EKLE</div>
+        <label class="field-label" for="calcMaterialSearch">MALZEME ARA</label>
+        <input type="search" id="calcMaterialSearch" autocomplete="off" placeholder="ÖRN. MAKARA">
+        <div id="calcMaterialChoices"></div>
+        <div id="calcPickedMaterial" class="form-note">Listeden malzeme seçin.</div>
+        <div class="calc-grid">
+          <div><label class="field-label" for="calcAddQty">MİKTAR</label><input type="text" inputmode="decimal" id="calcAddQty" placeholder="ÖRN. 2"></div>
+          <div><label class="field-label" for="calcAddPrice">BİRİM SATIŞ FİYATI</label><input type="text" inputmode="decimal" id="calcAddPrice" placeholder="FİYAT"></div>
+          <div><label class="field-label" for="calcAddCurrency">PARA BİRİMİ</label><select id="calcAddCurrency"><option value="EUR">€ EURO</option><option value="TRY">₺ TL</option><option value="USD">$ DOLAR</option></select></div>
+        </div>
+        <div class="form-note">Liste fiyatını bu fiş için değiştirebilirsin; stok listesindeki fiyat değişmez.</div>
+        <button class="btn" id="calcAddBtn">KALEMİ EKLE</button>
+      </div>
+      <div class="input-panel">
+        <div class="modal-title">FİŞTEKİ KALEMLER</div>
+        <div id="calcLines"></div>
+        <div id="calcTotal" class="budget-total"></div>
+        <div id="calcMessage" class="form-note" role="status"></div>
+        <button class="btn" id="calcSaveBtn">HESABI FİŞE KAYDET</button>
+      </div>
+    </div>
+  </div>
+
   <div id="view-budget" style="display:none;">
     <div class="section-tabs" role="group" aria-label="Bütçe tarafı">
       <button class="section-tab active" id="budgetToksTab">TOKS BÜTÇESİ</button>
@@ -436,6 +486,13 @@
     let budgetMode = 'jobs';
     let budgetBusiness = 'TOKS';
     let currentEuroRate = null;   // Kur bilinmiyorsa null kalır, ASLA 1 varsayılmaz
+    let currentEuroRateFresh = false;
+    let calcJobId = null;
+    let calcPickedId = null;
+    let calcDraft = null;
+    let calcDirty = false;
+    let calcRateSuggested = false;
+    const CALC_DRAFT_KEY = 'toks_receipt_calc_draft_v1';
     let editingId = null;
     let editingQuoteId = null;
     let quotesLoaded = false;
@@ -517,7 +574,14 @@
 
     function showRate(rate, stale) {
       currentEuroRate = rate;
+      currentEuroRateFresh = !stale;
       document.getElementById('euro-rate').innerText = "€1 = " + rate.toFixed(2) + " ₺" + (stale ? " (son bilinen)" : "");
+      if (!stale && calcDraft && calcDraft.date === todayISO() && !calcDraft.eurRate && !calcDraft.lines.length) {
+        calcDraft.eurRate = rate.toFixed(4);
+        calcRateSuggested = true;
+        document.getElementById('calcEuroRate').value = calcDraft.eurRate;
+        updateCalcSummary();
+      }
     }
 
     try {
@@ -639,11 +703,13 @@
       document.getElementById('tab-quotes').classList.toggle('active', tab === 'quotes');
       document.getElementById('tab-archive').classList.toggle('active', tab === 'archive');
       document.getElementById('tab-stock').classList.toggle('active', tab === 'stock');
+      document.getElementById('tab-calc').classList.toggle('active', tab === 'calc');
       document.getElementById('tab-budget').classList.toggle('active', tab === 'budget');
       document.getElementById('view-active').style.display = tab === 'active' ? 'block' : 'none';
       document.getElementById('view-quotes').style.display = tab === 'quotes' ? 'block' : 'none';
       document.getElementById('view-archive').style.display = tab === 'archive' ? 'block' : 'none';
       document.getElementById('view-stock').style.display = tab === 'stock' ? 'block' : 'none';
+      document.getElementById('view-calc').style.display = tab === 'calc' ? 'block' : 'none';
       document.getElementById('view-budget').style.display = tab === 'budget' ? 'block' : 'none';
       closeModal();
       renderAll();
@@ -659,6 +725,7 @@
         } else renderQuotes(true);
       }
       else if (currentTab === 'stock') renderStock();
+      else if (currentTab === 'calc') renderCalcJobChoices();
       else if (currentTab === 'budget') {
         if (budgetMode === 'jobs') renderBudget();
         else renderQuoteAnalytics();
@@ -775,9 +842,10 @@
                 <button class="s-btn ${c2}" data-act="status" data-id="${id}" data-status="2">BİTTİ</button>
                 <button class="s-btn s-btn-archive" data-act="status" data-id="${id}" data-status="3">ARŞİV</button>
               </div>
-              <div style="display:flex; justify-content:space-between; margin-top:4px;">
+              <div style="display:flex; flex-wrap:wrap; gap:5px; justify-content:space-between; margin-top:4px;">
                 <button data-act="edit" data-id="${id}" style="background:transparent; border:1px solid #cbd5e1; color:#cbd5e1; font-size:0.6rem; padding:2px 8px; border-radius:3px;">DÜZENLE</button>
                 <button data-act="materials" data-id="${id}" style="background:transparent; border:1px solid var(--toks-yellow); color:var(--toks-yellow); font-size:0.6rem; padding:2px 8px; border-radius:3px;">MALZEME</button>
+                <button data-act="calc" data-id="${id}" style="background:transparent; border:1px solid var(--green); color:var(--green); font-size:0.6rem; padding:2px 8px; border-radius:3px;">FİŞ HESABI</button>
                 <button data-act="cancel" data-id="${id}" style="background:transparent; border:1px solid var(--orange); color:var(--orange); font-size:0.6rem; padding:2px 8px; border-radius:3px;">İPTAL</button>
                 <button data-act="delete" data-id="${id}" style="background:transparent; border:1px solid var(--red); color:var(--red); font-size:0.6rem; padding:2px 8px; border-radius:3px;">SİL</button>
               </div>
@@ -858,6 +926,7 @@
                   <button class="s-btn" data-act="status" data-id="${id}" data-status="0" style="background:var(--border); color:#fff; padding:6px;">GERİ AL</button>
                   ${job.cancelledAt || job.deletedAt ? '' : `<button class="s-btn" data-act="edit" data-id="${id}" style="background:var(--border); color:#cbd5e1; padding:6px;">DÜZENLE</button>`}
                   ${job.cancelledAt || job.deletedAt ? '' : `<button class="s-btn" data-act="materials" data-id="${id}" style="background:var(--border); color:var(--toks-yellow); padding:6px;">MALZEME</button>`}
+                  ${job.deletedAt ? '' : `<button class="s-btn" data-act="calc" data-id="${id}" style="background:var(--border); color:var(--green); padding:6px;">FİŞ HESABI</button>`}
                   ${job.deletedAt ? '' : `<button class="s-btn" data-act="delete" data-id="${id}" style="background:var(--red); color:#fff; padding:6px;">SİL</button>`}
                 </div>
               </div>
@@ -1384,6 +1453,215 @@
       const amount = Number(price.amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
       const symbol = { EUR: '€', TRY: 'TL', USD: '$' }[price.currency];
       return `${amount} ${symbol} / ${unit}`;
+    }
+
+    // Fiş hesabı iş fiyatından, bütçeden ve stok hareketlerinden ayrı tutulur.
+    function calcMoney(amount, currency) {
+      return Number(amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+        ({ EUR: ' €', USD: ' $', TRY: ' ₺' }[currency] || '');
+    }
+
+    function calcLineTRY(line, draft) {
+      const qty = parseDecimalInput(line.qty);
+      const unitPrice = parseDecimalInput(line.price);
+      if (!(qty > 0 && qty <= 1000000) || !(unitPrice > 0 && unitPrice <= 1000000000)) return null;
+      const currency = line.currency;
+      if (!['EUR','USD','TRY'].includes(currency)) return null;
+      const rate = currency === 'EUR' ? parseDecimalInput(draft.eurRate)
+        : currency === 'USD' ? parseDecimalInput(draft.usdRate) : 1;
+      if (!(rate > 0 && rate <= 1000000)) return null;
+      const result = qty * unitPrice * rate;
+      return Number.isFinite(result) ? Math.round(result * 100) / 100 : null;
+    }
+
+    function calcDraftTotal(draft) {
+      if (!draft || !draft.lines || !draft.lines.length) return null;
+      let total = 0;
+      for (const line of draft.lines) {
+        const amount = calcLineTRY(line, draft);
+        if (amount === null) return null;
+        total += amount;
+      }
+      return Math.round(total * 100) / 100;
+    }
+
+    function saveCalcDraftLocally() {
+      if (!calcJobId || !calcDraft) return;
+      calcDirty = true;
+      try { localStorage.setItem(CALC_DRAFT_KEY, JSON.stringify({ jobId: calcJobId, draft: calcDraft })); } catch (e) {}
+    }
+
+    function clearCalcDraftLocally() {
+      try { localStorage.removeItem(CALC_DRAFT_KEY); } catch (e) {}
+    }
+
+    function renderCalcJobChoices() {
+      if (!calcJobId) {
+        try {
+          const pending = JSON.parse(localStorage.getItem(CALC_DRAFT_KEY) || 'null');
+          if (pending && pending.jobId && findJob(pending.jobId) && pending.draft && Array.isArray(pending.draft.lines)) {
+            calcJobId = pending.jobId;
+            calcDraft = pending.draft;
+            calcDirty = true;
+            calcRateSuggested = false;
+            renderCalcEditor();
+            document.getElementById('calcMessage').textContent = 'Kaydedilmemiş hesap bu cihazdan geri yüklendi.';
+          }
+        } catch (e) {}
+      }
+      const job = calcJobId && findJob(calcJobId);
+      document.getElementById('calcSelectedJob').textContent = job
+        ? `SEÇİLİ FİŞ: ${job.receipt || '-'} • ${job.plate || '-'} • ${job.firm || '-'}` : 'Önce fiş seçin.';
+      if (!job) document.getElementById('calcEditor').style.display = 'none';
+      const key = materialKey(document.getElementById('calcJobSearch').value);
+      const filtered = jobs.filter(item => item && !item.deletedAt && (!key ||
+        materialKey(`${item.receipt || ''} ${item.plate || ''} ${item.firm || ''}`).includes(key)));
+      const matches = (key ? filtered.slice(0, 12) : filtered.slice(-8).reverse());
+      document.getElementById('calcJobChoices').innerHTML = matches.map(item =>
+        `<button class="calc-choice" data-calc-job="${esc(item.id)}">${esc(item.receipt || '-')} • ${esc(item.plate || '-')} • ${esc(item.firm || '-')}</button>`
+      ).join('') || '<div class="form-note">Fiş bulunamadı.</div>';
+    }
+
+    function selectCalcJob(id) {
+      const job = findJob(id);
+      if (!job || job.deletedAt) return false;
+      if (calcJobId === id && calcDraft) return true;
+      if (calcDirty && calcJobId && calcJobId !== id && !confirm('Kaydedilmemiş fiş hesabı var. Başka fişe geçilsin mi?')) return false;
+      if (calcJobId !== id) clearCalcDraftLocally();
+      calcJobId = id;
+      calcPickedId = null;
+      const saved = job.receiptCalc;
+      calcDraft = saved && Array.isArray(saved.lines)
+        ? { date: saved.date || todayISO(), eurRate: String(saved.eurRate || ''), usdRate: String(saved.usdRate || ''), lines: saved.lines.map(line => ({ ...line })) }
+        : { date: todayISO(), eurRate: currentEuroRateFresh ? currentEuroRate.toFixed(4) : '', usdRate: '', lines: [] };
+      calcRateSuggested = !saved && currentEuroRateFresh;
+      calcDirty = false;
+      document.getElementById('calcJobSearch').value = '';
+      document.getElementById('calcMaterialSearch').value = '';
+      document.getElementById('calcAddQty').value = '';
+      document.getElementById('calcAddPrice').value = '';
+      document.getElementById('calcPickedMaterial').textContent = 'Listeden malzeme seçin.';
+      document.getElementById('calcMessage').textContent = saved ? 'Kaydedilmiş fiş hesabı açıldı.' : '';
+      renderCalcEditor();
+      renderCalcJobChoices();
+      return true;
+    }
+
+    function renderCalcEditor() {
+      if (!calcDraft) return;
+      document.getElementById('calcEditor').style.display = 'block';
+      document.getElementById('calcDate').value = calcDraft.date;
+      document.getElementById('calcEuroRate').value = calcDraft.eurRate;
+      document.getElementById('calcDollarRate').value = calcDraft.usdRate;
+      renderCalcMaterialChoices();
+      renderCalcLines();
+    }
+
+    function renderCalcMaterialChoices() {
+      const name = document.getElementById('calcMaterialSearch').value.trim();
+      const matches = matchingMaterials(name, 10);
+      document.getElementById('calcMaterialChoices').innerHTML = name
+        ? matches.map(item => `<button class="calc-choice" data-calc-material="${esc(item.id)}">${esc(item.name)} • ${esc(stockPriceLabel(item.id, item.unit))}</button>`).join('') || '<div class="form-note">Listede yok. Önce Stok bölümünde malzemeyi ekleyin.</div>'
+        : '';
+    }
+
+    function pickCalcMaterial(id) {
+      const item = allMaterials().find(material => material.id === id);
+      if (!item) return;
+      calcPickedId = id;
+      const price = stockPrice(id);
+      document.getElementById('calcMaterialSearch').value = item.name;
+      document.getElementById('calcMaterialChoices').innerHTML = '';
+      document.getElementById('calcPickedMaterial').textContent = price
+        ? `${item.name} • listeden ${stockPriceLabel(id, item.unit)}` : `${item.name} • fiyat yok, birim fiyatı girin`;
+      document.getElementById('calcAddPrice').value = price ? String(price.amount).replace('.', ',') : '';
+      document.getElementById('calcAddCurrency').value = price ? price.currency : 'TRY';
+      document.getElementById('calcAddQty').focus();
+    }
+
+    function addCalcLine() {
+      if (!calcDraft || !calcPickedId) { document.getElementById('calcMessage').textContent = 'Önce listeden malzeme seçin.'; return; }
+      const qty = parseDecimalInput(document.getElementById('calcAddQty').value);
+      const price = parseDecimalInput(document.getElementById('calcAddPrice').value);
+      if (!(qty > 0 && qty <= 1000000) || !(price > 0 && price <= 1000000000)) {
+        document.getElementById('calcMessage').textContent = 'Miktar ve birim fiyatı sıfırdan büyük girin.'; return;
+      }
+      const item = materialMeta(calcPickedId);
+      calcDraft.lines.push({ id: item.id, name: item.name, unit: item.unit, qty, price, currency: document.getElementById('calcAddCurrency').value });
+      saveCalcDraftLocally();
+      calcPickedId = null;
+      document.getElementById('calcMaterialSearch').value = '';
+      document.getElementById('calcAddQty').value = '';
+      document.getElementById('calcAddPrice').value = '';
+      document.getElementById('calcPickedMaterial').textContent = 'Listeden malzeme seçin.';
+      document.getElementById('calcMessage').textContent = '';
+      renderCalcLines();
+      renderCalcMaterialChoices();
+    }
+
+    function renderCalcLines() {
+      document.getElementById('calcLines').innerHTML = calcDraft.lines.map((line, index) => `
+        <div class="calc-line">
+          <div class="calc-line-head"><span>${esc(line.name || materialMeta(line.id).name)}</span><button class="calc-remove" data-calc-remove="${index}" aria-label="Kalemi sil">SİL</button></div>
+          <div class="calc-line-fields">
+            <div><label class="field-label">MİKTAR (${esc(line.unit || 'ADET')})</label><input type="text" inputmode="decimal" data-calc-line="${index}" data-calc-field="qty" value="${esc(line.qty)}"></div>
+            <div><label class="field-label">BİRİM FİYAT</label><input type="text" inputmode="decimal" data-calc-line="${index}" data-calc-field="price" value="${esc(line.price)}"></div>
+            <div><label class="field-label">PARA BİRİMİ</label><select data-calc-line="${index}" data-calc-field="currency"><option value="EUR" ${line.currency === 'EUR' ? 'selected' : ''}>€</option><option value="TRY" ${line.currency === 'TRY' ? 'selected' : ''}>₺</option><option value="USD" ${line.currency === 'USD' ? 'selected' : ''}>$</option></select></div>
+          </div>
+          <div class="calc-line-total" data-calc-line-total="${index}"></div>
+        </div>`).join('') || '<div class="quote-empty">Henüz kalem eklenmedi.</div>';
+      updateCalcSummary();
+    }
+
+    function updateCalcSummary() {
+      if (!calcDraft) return;
+      document.getElementById('calcDollarRateWrap').style.display = calcDraft.lines.some(line => line.currency === 'USD') ? 'block' : 'none';
+      const date = calcDraft.date;
+      const note = date && date !== todayISO() ? 'Geçmiş tarihli fişte o gün kullandığınız kuru girin.'
+        : 'Bugünün Euro kuru önerilir; fişte kullandığınız farklı kuru yazabilirsiniz.';
+      document.getElementById('calcRateNote').textContent = `Fiş tarihi: ${showDate(date)}. ${note}`;
+      for (const el of document.querySelectorAll('[data-calc-line-total]')) {
+        const line = calcDraft.lines[Number(el.dataset.calcLineTotal)];
+        if (!line) continue;
+        const amount = calcLineTRY(line, calcDraft);
+        el.textContent = amount === null ? 'Tutar için fiyat, miktar ve kur gerekli.'
+          : `${quantityLabel(line.qty)} × ${calcMoney(line.price, line.currency)} = ${calcMoney(amount, 'TRY')}`;
+      }
+      const total = calcDraftTotal(calcDraft);
+      document.getElementById('calcTotal').textContent = total === null
+        ? (calcDraft.lines.length ? 'TOPLAM: KUR / FİYAT EKSİK' : 'TOPLAM: 0,00 ₺')
+        : `HESAPLANAN TOPLAM: ${calcMoney(total, 'TRY')}`;
+    }
+
+    async function saveCalc() {
+      if (!db || !calcJobId || !calcDraft || !findJob(calcJobId)) return;
+      const date = calcDraft.date;
+      const total = calcDraftTotal(calcDraft);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayISO()) {
+        document.getElementById('calcMessage').textContent = 'Geçerli bir fiş tarihi girin.'; return;
+      }
+      if (total === null) {
+        document.getElementById('calcMessage').textContent = 'En az bir kalem ekleyin; miktar, fiyat ve gerekli kurları kontrol edin.'; return;
+      }
+      const payload = { date, eurRate: calcDraft.lines.some(line => line.currency === 'EUR') ? parseDecimalInput(calcDraft.eurRate) : null,
+        usdRate: calcDraft.lines.some(line => line.currency === 'USD') ? parseDecimalInput(calcDraft.usdRate) : null,
+        lines: calcDraft.lines.map(line => ({ id: line.id, name: line.name, unit: line.unit,
+          qty: parseDecimalInput(line.qty), price: parseDecimalInput(line.price), currency: line.currency })),
+        totalTRY: total, savedAt: Date.now() };
+      const button = document.getElementById('calcSaveBtn');
+      button.disabled = true;
+      try {
+        await db.child(calcJobId).update({ receiptCalc: payload });
+        calcDirty = false;
+        clearCalcDraftLocally();
+        document.getElementById('calcMessage').textContent = 'Hesap fişe kaydedildi. İşin toplam fiyatı ve bütçe değişmedi.';
+      } catch (e) {
+        document.getElementById('calcMessage').textContent = 'Hesap kaydedilemedi; taslak bu cihazda duruyor.';
+      } finally { button.disabled = false; }
+    }
+
+    function openCalcForJob(id) {
+      if (selectCalcJob(id)) switchTab('calc');
     }
 
     function stockPriceHistoryLabel(entry) {
@@ -1954,6 +2232,7 @@
         case 'status': updateStatus(id, parseInt(el.dataset.status, 10)); break;
         case 'edit':   editJob(id); break;
         case 'materials': openMaterialDialog(id); break;
+        case 'calc': openCalcForJob(id); break;
         case 'cancel': cancelJob(id); break;
         case 'delete': deleteJob(id); break;
         case 'pdf':    generatePDF(id); break;
@@ -1972,6 +2251,7 @@
     document.getElementById('tab-quotes').addEventListener('click', () => switchTab('quotes'));
     document.getElementById('tab-archive').addEventListener('click', () => switchTab('archive'));
     document.getElementById('tab-stock').addEventListener('click', () => switchTab('stock'));
+    document.getElementById('tab-calc').addEventListener('click', () => switchTab('calc'));
     document.getElementById('tab-budget').addEventListener('click', () => switchTab('budget'));
     document.getElementById('archiveJobsTab').addEventListener('click', () => switchArchiveMode('jobs'));
     document.getElementById('archiveQuotesTab').addEventListener('click', () => switchArchiveMode('quotes'));
@@ -2053,6 +2333,64 @@
       const action = button.dataset.stockAct === 'opening' ? saveStockOpening : addStockReceipt;
       action(button.dataset.id, input.value).finally(() => { button.disabled = false; });
     });
+    document.getElementById('calcJobSearch').addEventListener('input', renderCalcJobChoices);
+    document.getElementById('calcJobChoices').addEventListener('click', e => {
+      const button = e.target.closest('[data-calc-job]');
+      if (button) selectCalcJob(button.dataset.calcJob);
+    });
+    document.getElementById('calcMaterialSearch').addEventListener('input', () => {
+      calcPickedId = null;
+      document.getElementById('calcPickedMaterial').textContent = 'Listeden malzeme seçin.';
+      renderCalcMaterialChoices();
+    });
+    document.getElementById('calcMaterialChoices').addEventListener('click', e => {
+      const button = e.target.closest('[data-calc-material]');
+      if (button) pickCalcMaterial(button.dataset.calcMaterial);
+    });
+    document.getElementById('calcAddBtn').addEventListener('click', addCalcLine);
+    document.getElementById('calcDate').addEventListener('change', e => {
+      if (!calcDraft) return;
+      calcDraft.date = e.target.value;
+      if (calcRateSuggested && calcDraft.date !== todayISO()) {
+        calcDraft.eurRate = '';
+        document.getElementById('calcEuroRate').value = '';
+        calcRateSuggested = false;
+      }
+      saveCalcDraftLocally();
+      updateCalcSummary();
+    });
+    document.getElementById('calcEuroRate').addEventListener('input', e => {
+      if (!calcDraft) return;
+      calcDraft.eurRate = e.target.value;
+      calcRateSuggested = false;
+      saveCalcDraftLocally();
+      updateCalcSummary();
+    });
+    document.getElementById('calcDollarRate').addEventListener('input', e => {
+      if (!calcDraft) return;
+      calcDraft.usdRate = e.target.value;
+      saveCalcDraftLocally();
+      updateCalcSummary();
+    });
+    function handleCalcLineInput(e) {
+      const input = e.target.closest('[data-calc-line]');
+      if (!input || !calcDraft) return;
+      const line = calcDraft.lines[Number(input.dataset.calcLine)];
+      if (!line || !['qty','price','currency'].includes(input.dataset.calcField)) return;
+      line[input.dataset.calcField] = input.value;
+      saveCalcDraftLocally();
+      updateCalcSummary();
+    }
+    document.getElementById('calcLines').addEventListener('input', handleCalcLineInput);
+    document.getElementById('calcLines').addEventListener('change', handleCalcLineInput);
+    document.getElementById('calcLines').addEventListener('click', e => {
+      const button = e.target.closest('[data-calc-remove]');
+      if (!button || !calcDraft) return;
+      calcDraft.lines.splice(Number(button.dataset.calcRemove), 1);
+      saveCalcDraftLocally();
+      renderCalcLines();
+    });
+    document.getElementById('calcSaveBtn').addEventListener('click', saveCalc);
     document.getElementById('materialCloseBtn').addEventListener('click', closeMaterialDialog);
     document.getElementById('materialNameInput').addEventListener('input', renderMaterialSuggestions);
     document.getElementById('materialSuggestions').addEventListener('click', e => {
