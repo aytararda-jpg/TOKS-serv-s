@@ -111,6 +111,9 @@
     .quote-stat { background:#0f172a; border:1px solid var(--border); border-radius:6px; padding:10px; }
     .quote-stat strong { display:block; font-size:1.05rem; margin-top:5px; color:var(--toks-yellow); }
     .quote-empty { color:#94a3b8; font-size:0.85rem; padding:15px; border:1px dashed var(--border); border-radius:6px; }
+    .trash-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .trash-actions .btn { flex:1 1 180px; }
+    .trash-actions .btn:disabled { opacity:0.45; cursor:default; }
     .material-line { display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid #1e293b; font-size:0.74rem; }
     .material-line:last-child { border-bottom:none; }
     .stock-list { display:flex; flex-direction:column; gap:6px; }
@@ -153,7 +156,7 @@
     .material-suggestions button { width:auto; padding:6px 9px; font-size:0.7rem; background:#15263a; color:#fff; border:1px solid var(--border); border-radius:4px; cursor:pointer; }
     .stock-review-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.78rem; }
     .stock-review-row button { width:auto; padding:7px 10px; border:1px solid var(--toks-yellow); border-radius:4px; background:#0f172a; color:var(--toks-yellow); font-weight:bold; cursor:pointer; }
-    @media (max-width:540px) { .input-row { flex-direction:column; } .input-row > *, #priceContainer { width:100% !important; } .quote-toolbar { flex-direction:column; } .tabs { flex-wrap:wrap; } .tab { flex:1 1 30%; font-size:0.62rem; } .material-dialog { margin:10px auto; } .calc-line-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:540px) { .input-row { flex-direction:column; } .input-row > *, #priceContainer { width:100% !important; } .quote-toolbar { flex-direction:column; } .tabs { flex-wrap:wrap; } .tab { flex:1 1 30%; font-size:0.62rem; } .section-tab { font-size:0.72rem; } .material-dialog { margin:10px auto; } .calc-line-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
     /* GİRİŞ EKRANI */
     #loginOverlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 9999; justify-content: center; align-items: center; }
@@ -299,6 +302,7 @@
     <div class="section-tabs">
       <button class="section-tab active" id="archiveJobsTab">SERVİS İŞLERİ</button>
       <button class="section-tab" id="archiveQuotesTab">FİYAT TEKLİFLERİ</button>
+      <button class="section-tab" id="archiveTrashTab">ÇÖP KUTUSU</button>
     </div>
     <div id="archiveJobsView">
       <div class="grid-container" id="folderList"></div>
@@ -321,6 +325,19 @@
       </div>
       <div id="archiveQuoteMessage" class="form-note"></div>
       <div class="grid-container" id="archiveQuoteList"></div>
+    </div>
+    <div id="archiveTrashView" style="display:none;">
+      <div class="input-panel">
+        <div class="modal-title">ÇÖP KUTUSU</div>
+        <div class="form-note">Silinen işleri burada kontrol edip geri alabilirsin. Çöpü boşaltınca bu işler kalıcı silinir; işlemden önce JSON yedeği indirilir.</div>
+        <div id="trashCount" class="form-note" role="status"></div>
+        <div class="trash-actions">
+          <button class="btn" id="trashBackupBtn" style="background:var(--blue);">ÇÖP YEDEĞİNİ İNDİR</button>
+          <button class="btn" id="trashEmptyBtn" style="background:var(--red); color:#fff;">ÇÖP KUTUSUNU BOŞALT</button>
+        </div>
+        <div id="trashMessage" class="form-note" role="status"></div>
+      </div>
+      <div class="grid-container" id="trashList"></div>
     </div>
   </div>
 
@@ -409,7 +426,7 @@
       <div class="budget-total" id="budgetCashTotal">0 ₺</div>
       <div class="form-note" id="budgetCashCount">Nakit kaydı yok.</div>
       <div class="form-note">Bu tutar tamamlanan iş toplamına eklenmez; ayrıca izlenir.</div>
-      <div class="form-note">İptal veya silme, alınmış nakdi otomatik sıfırlamaz. İade varsa iş kaydındaki nakit tutarını düzelt.</div>
+      <div class="form-note">İptal veya Çöp Kutusuna taşıma, alınmış nakdi otomatik sıfırlamaz. Çöp Kutusu boşaltılırsa o işin nakit kaydı da kalkar. İade varsa iş kaydındaki nakit tutarını düzelt.</div>
     </div>
     <div class="budget-card">
       <div class="budget-title">FİRMA CARİ DAĞILIMI (ARŞİVLENEN İŞLER)</div>
@@ -483,6 +500,7 @@
     let inventory = {};
     let currentTab = 'active';
     let archiveMode = 'jobs';
+    let trashEmptying = false;
     let budgetMode = 'jobs';
     let budgetBusiness = 'TOKS';
     let currentEuroRate = null;   // Kur bilinmiyorsa null kalır, ASLA 1 varsayılmaz
@@ -722,7 +740,8 @@
         if (archiveMode === 'jobs') {
           renderFolders();
           if (currentOpenFirm) openModal(currentOpenFirm);
-        } else renderQuotes(true);
+        } else if (archiveMode === 'quotes') renderQuotes(true);
+        else renderTrash();
       }
       else if (currentTab === 'stock') renderStock();
       else if (currentTab === 'calc') renderCalcJobChoices();
@@ -751,11 +770,14 @@
     }
 
     function switchArchiveMode(mode) {
+      if (!['jobs','quotes','trash'].includes(mode)) return;
       archiveMode = mode;
       document.getElementById('archiveJobsTab').classList.toggle('active', mode === 'jobs');
       document.getElementById('archiveQuotesTab').classList.toggle('active', mode === 'quotes');
+      document.getElementById('archiveTrashTab').classList.toggle('active', mode === 'trash');
       document.getElementById('archiveJobsView').style.display = mode === 'jobs' ? 'block' : 'none';
       document.getElementById('archiveQuotesView').style.display = mode === 'quotes' ? 'block' : 'none';
+      document.getElementById('archiveTrashView').style.display = mode === 'trash' ? 'block' : 'none';
       closeModal();
       if (currentTab === 'archive') renderAll();
     }
@@ -863,8 +885,8 @@
       archiveFirms = {};
 
       jobs.forEach(job => {
-        if (job && (job.status === 3 || job.cancelledAt || job.deletedAt)) {
-          let fname = job.deletedAt ? '__deleted__' : job.cancelledAt ? '__cancelled__' : (job.firm || "BİLİNMEYEN FİRMA");
+        if (job && !job.deletedAt && (job.status === 3 || job.cancelledAt)) {
+          let fname = job.cancelledAt ? '__cancelled__' : (job.firm || "BİLİNMEYEN FİRMA");
           if (!archiveFirms[fname]) archiveFirms[fname] = [];
           archiveFirms[fname].push(job);
         }
@@ -874,7 +896,7 @@
       for (const [firmName, firmJobs] of Object.entries(archiveFirms)) {
         parts.push(`
           <div class="folder" data-firm="${esc(firmName)}">
-            <div class="folder-icon">🗂️</div><div class="folder-name">${esc(firmName === '__deleted__' ? 'SİLİNEN İŞLER' : firmName === '__cancelled__' ? 'İPTAL EDİLEN İŞLER' : firmName)}</div>
+            <div class="folder-icon">🗂️</div><div class="folder-name">${esc(firmName === '__cancelled__' ? 'İPTAL EDİLEN İŞLER' : firmName)}</div>
             <div class="folder-count">${firmJobs.length} İşlem</div>
           </div>
         `);
@@ -886,7 +908,7 @@
       currentOpenFirm = firmName;
       document.getElementById('folderList').style.display = 'none';
       document.getElementById('archiveModal').style.display = 'block';
-      document.getElementById('modalTitle').innerText = "🗂️ " + (firmName === '__deleted__' ? 'SİLİNEN İŞLER' : firmName === '__cancelled__' ? 'İPTAL EDİLEN İŞLER' : firmName);
+      document.getElementById('modalTitle').innerText = "🗂️ " + (firmName === '__cancelled__' ? 'İPTAL EDİLEN İŞLER' : firmName);
 
       const list = document.getElementById('modalJobs');
       const parts = [];
@@ -936,6 +958,85 @@
       }
 
       list.innerHTML = parts.join('');
+    }
+
+    function trashedJobs() {
+      return jobs.filter(job => job && job.deletedAt)
+        .sort((a, b) => Number(b.deletedAt) - Number(a.deletedAt));
+    }
+
+    function renderTrash() {
+      const deleted = trashedJobs();
+      document.getElementById('trashCount').textContent = deleted.length
+        ? `${deleted.length} silinen iş var.` : 'Çöp kutusu boş.';
+      document.getElementById('trashBackupBtn').disabled = !deleted.length || trashEmptying;
+      document.getElementById('trashEmptyBtn').disabled = !deleted.length || trashEmptying;
+      document.getElementById('trashList').innerHTML = deleted.map(job => {
+        const id = esc(job.id);
+        return `<div class="job-card" style="border-top:3px solid var(--orange);">
+          <div>
+            ${businessBadge(job)}
+            <div class="plate">${esc(job.plate || '-')} <span style="font-size:0.7rem; color:#94a3b8;">(Fiş: ${esc(job.receipt || '-')})</span></div>
+            <div class="firm">${esc(job.firm || '-')}</div>
+            <div class="task">${esc(job.task || '-')}</div>
+            <div class="price-tag">İş tutarı: ${esc(job.price || 'Belirtilmemiş')}${rateTextFor(job)}</div>
+            ${cashAmountTRY(job) ? `<div class="form-note">Kaydedilmiş nakit: ${esc(money(cashAmountTRY(job), 'TRY'))}</div>` : ''}
+            <div class="form-note">Çöpe taşınma: ${esc(showMoment(job.deletedAt))}</div>
+            ${jobMaterialsMarkup(job)}
+            ${jobAccountingHistoryMarkup(job)}
+          </div>
+          <div class="quote-actions">
+            <button data-act="pdf" data-id="${id}">PDF İNDİR</button>
+            <button data-act="status" data-id="${id}" data-status="0" style="border-color:var(--green); color:var(--green);">GERİ AL</button>
+          </div>
+        </div>`;
+      }).join('') || '<div class="quote-empty">Silinen iş yok.</div>';
+    }
+
+    function trashBackupData(deleted) {
+      return { format: 'toks-trash-backup-v1', exportedAt: new Date().toISOString(), jobs: deleted.map(job => ({ ...job })) };
+    }
+
+    function downloadTrashBackup(deleted) {
+      try {
+        const blob = new Blob([JSON.stringify(trashBackupData(deleted), null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `TOKS_COP_YEDEGI_${todayISO()}_${Date.now()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        return true;
+      } catch (e) {
+        document.getElementById('trashMessage').textContent = 'Yedek indirilemedi. Çöp kutusu değiştirilmedi.';
+        return false;
+      }
+    }
+
+    async function emptyTrash() {
+      if (!db || trashEmptying) return;
+      const deleted = trashedJobs();
+      if (!deleted.length) return;
+      const cash = deleted.reduce((sum, job) => sum + cashAmountTRY(job), 0);
+      const cashNote = cash ? ` Bu işlerdeki ${money(cash, 'TRY')} nakit kaydı da bütçeden kalkacak.` : '';
+      if (!downloadTrashBackup(deleted)) return;
+      if (!confirm(`İndirilenler klasöründe JSON yedeğini kontrol edin. ${deleted.length} iş kalıcı silinecek ve geri alma mümkün olmayacak.${cashNote} Yedek dosyası elinizdeyse çöp kutusu boşaltılsın mı?`)) {
+        document.getElementById('trashMessage').textContent = 'Çöp kutusu boşaltılmadı; kayıtlar yerinde duruyor.';
+        return;
+      }
+      trashEmptying = true;
+      renderTrash();
+      try {
+        await db.update(Object.fromEntries(deleted.map(job => [job.id, null])));
+        document.getElementById('trashMessage').textContent = `${deleted.length} iş kalıcı silindi. JSON yedeği indirme işlemi başlatıldı.`;
+      } catch (e) {
+        document.getElementById('trashMessage').textContent = 'Çöp kutusu boşaltılamadı. İndirilen yedek sizde duruyor.';
+      } finally {
+        trashEmptying = false;
+        renderTrash();
+      }
     }
 
     function closeModal() {
@@ -2174,7 +2275,7 @@
       if (!db) return;
       const job = findJob(id);
       if (!job || job.deletedAt) return;
-      if (!confirm("Bu işi Silinen İşler bölümüne taşımak istiyor musun? Kullanılmış malzemeler stok hesabına geri döner.")) return;
+      if (!confirm("Bu işi Çöp Kutusuna taşımak istiyor musun? Kullanılmış malzemeler stok hesabına geri döner.")) return;
       db.child(id).update({ deletedAt: Date.now() }).catch(() => alert("Kayıt silinemedi."));
       closeModal();
     }
@@ -2241,6 +2342,14 @@
 
     document.getElementById('jobList').addEventListener('click', handleJobAction);
     document.getElementById('modalJobs').addEventListener('click', handleJobAction);
+    document.getElementById('trashList').addEventListener('click', handleJobAction);
+    document.getElementById('trashBackupBtn').addEventListener('click', () => {
+      const deleted = trashedJobs();
+      if (deleted.length && downloadTrashBackup(deleted)) {
+        document.getElementById('trashMessage').textContent = `${deleted.length} işin JSON yedeği indirme işlemi başlatıldı.`;
+      }
+    });
+    document.getElementById('trashEmptyBtn').addEventListener('click', emptyTrash);
 
     document.getElementById('folderList').addEventListener('click', e => {
       const el = e.target.closest('.folder');
@@ -2255,6 +2364,7 @@
     document.getElementById('tab-budget').addEventListener('click', () => switchTab('budget'));
     document.getElementById('archiveJobsTab').addEventListener('click', () => switchArchiveMode('jobs'));
     document.getElementById('archiveQuotesTab').addEventListener('click', () => switchArchiveMode('quotes'));
+    document.getElementById('archiveTrashTab').addEventListener('click', () => switchArchiveMode('trash'));
     document.getElementById('budgetJobsTab').addEventListener('click', () => switchBudgetMode('jobs'));
     document.getElementById('budgetQuotesTab').addEventListener('click', () => switchBudgetMode('quotes'));
     document.getElementById('budgetToksTab').addEventListener('click', () => switchBudgetBusiness('TOKS'));

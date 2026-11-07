@@ -17,16 +17,18 @@ function emit(){for(const [path,arr] of Object.entries(listeners))for(const fn o
 class Ref{constructor(path=''){this.path=path}child(key){return new Ref([this.path,key].filter(Boolean).join('/'))}on(type,fn){(listeners[this.path]??=[]).push(fn);fn({val:()=>get(this.path)})}push(value){const key='q'+(++seq);if(value===undefined)return {key};set(this.path+'/'+key,value);emit();return Promise.resolve({key})}update(values){for(const [key,value] of Object.entries(values))set([this.path,key].filter(Boolean).join('/'),value);emit();return Promise.resolve()}remove(){set(this.path,null);emit();return Promise.resolve()}}
 const authInstance={setPersistence:()=>Promise.resolve(),onAuthStateChanged:fn=>fn({uid:'test'}),signInWithEmailAndPassword:()=>Promise.resolve(),signOut:()=>Promise.resolve()};
 function auth(){return authInstance}auth.Auth={Persistence:{LOCAL:'local'}};
-const alerts=[], confirmations=[]; let savedPdf='';
+const alerts=[], confirmations=[]; let savedPdf='', confirmAnswer=true;
 const savedLocal={};
+let backupBlob=null, backupFilename='';
+class MockBlob {constructor(parts,options){this.parts=parts;this.type=options.type}}
 class MockPDF { setFont(){} setFontSize(){} setTextColor(){} text(){} setDrawColor(){} setFillColor(){} setLineWidth(){} line(){} roundedRect(){} splitTextToSize(text){return [text]} save(name){savedPdf=name} }
 const context=vm.createContext({
- document:{getElementById:id=>elements[id],querySelectorAll:()=>[]},
+ document:{getElementById:id=>elements[id],querySelectorAll:()=>[],body:{appendChild(){}},createElement:()=>({click(){backupFilename=this.download},remove(){}})},
  window:{scrollTo(){},location:{reload(){}},jspdf:{jsPDF:MockPDF}},
  firebase:{initializeApp(){},auth,database:()=>({ref:(path='')=>new Ref(path)})},
  localStorage:{getItem:key=>savedLocal[key]??null,setItem:(key,value)=>{savedLocal[key]=value},removeItem:key=>{delete savedLocal[key]}},
  fetch:()=>Promise.resolve({json:()=>Promise.resolve({rates:{TRY:50}})}),
- Chart:class{destroy(){}},setInterval(){},alert:msg=>alerts.push(msg),confirm:msg=>{confirmations.push(msg);return true},
+ Chart:class{destroy(){}},setInterval(){},setTimeout(){},Blob:MockBlob,URL:{createObjectURL:blob=>{backupBlob=blob;return 'blob:mock'},revokeObjectURL(){}},alert:msg=>alerts.push(msg),confirm:msg=>{confirmations.push(msg);return confirmAnswer},
  console, Date, Number, String, Object, Math, Promise, Intl, isFinite, parseFloat
 });
 vm.runInContext(script,context);
@@ -212,6 +214,12 @@ const run=s=>vm.runInContext(s,context);
  run(`deleteJob(${JSON.stringify(newJobId)})`);
  assert.equal(run('stockNumbers("xlsm_211").balance'),120);
  assert.ok(data.toks_jobs[newJobId].deletedAt);
+ run('switchTab("archive"); switchArchiveMode("jobs")');
+ assert.doesNotMatch(elements.folderList.innerHTML,/SİLİNEN İŞLER|__deleted__/);
+ run('switchArchiveMode("trash")');
+ assert.match(elements.trashList.innerHTML,/34 TEST 99/);
+ assert.match(elements.trashList.innerHTML,/GERİ AL/);
+ assert.match(elements.trashCount.textContent,/1 silinen iş/);
  run('switchTab("budget")');
  assert.match(elements.budgetCashTotal.innerText,/1\.250,50/);
  run('switchTab("active")');
@@ -353,6 +361,28 @@ const run=s=>vm.runInContext(s,context);
  assert.equal(standalone.unit,'METRE');
  assert.match(elements.stockCustomMessage.textContent,/eklendi/);
  assert.match(elements.stockList.innerHTML,/YENİ METRE MALZEME/);
+ data.toks_jobs.trashA={plate:'34 COP A',firm:'SİLİNECEK',task:'TAMİR',status:3,deletedAt:100,cashReceivedTRY:100,business:'TOKS'};
+ data.toks_jobs.trashB={plate:'34 COP B',firm:'SİLİNECEK',task:'BRANDA',status:0,deletedAt:200};
+ emit();
+ run('switchTab("archive"); switchArchiveMode("trash")');
+ assert.equal(run('trashedJobs().length'),2);
+ assert.equal(run('trashBackupData(trashedJobs()).jobs.length'),2);
+ assert.match(elements.trashList.innerHTML,/34 COP A|34 COP B/);
+ assert.equal(run('downloadTrashBackup(trashedJobs())'),true);
+ assert.match(backupFilename,/^TOKS_COP_YEDEGI_.*\.json$/);
+ assert.equal(JSON.parse(backupBlob.parts.join('')).jobs.length,2);
+ run('downloadTrashBackup = () => true');
+ confirmAnswer=false;
+ await run('emptyTrash()');
+ assert.ok(data.toks_jobs.trashA && data.toks_jobs.trashB);
+ confirmAnswer=true;
+ await run('emptyTrash()');
+ assert.equal(data.toks_jobs.trashA,undefined);
+ assert.equal(data.toks_jobs.trashB,undefined);
+ assert.ok(data.toks_jobs.old);
+ assert.equal(run('trashedJobs().length'),0);
+ assert.match(elements.trashCount.textContent,/Çöp kutusu boş/);
+ assert.match(confirmations.at(-1),/nakit kaydı da bütçeden kalkacak/);
  assert.deepEqual(alerts,[]);
- console.log('PASS: budgets, quotes, stock, receipt calculator save/restore, finish/cancel/delete/restore');
+ console.log('PASS: budgets, quotes, stock, receipt calculator, separate trash, backup and empty');
 })().catch(e=>{console.error(e);process.exitCode=1});
